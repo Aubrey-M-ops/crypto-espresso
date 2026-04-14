@@ -4,6 +4,9 @@
 
   <!-- Pixel grid size: 8px -->
 
+  <!-- Centered content group: shifts cup+text to horizontal center -->
+  <g transform="translate(-108, 0)">
+
   <!-- Steam particles -->
   <!-- Left steam -->
   <rect x="288" y="32" width="8" height="8" fill="#888"/>
@@ -99,6 +102,8 @@
     fill="#888888"
     letter-spacing="1"
   >每日加密货币新闻  ·  AI 中文摘要  ·  Telegram 推送</text>
+
+  </g><!-- end centered content group -->
 
   <!-- Decorative pixel dots bottom row -->
   <rect x="0"   y="192" width="8" height="8" fill="#e8c47a"/>
