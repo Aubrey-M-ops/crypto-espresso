@@ -8,6 +8,7 @@ term glossaries, category tags, and thought-provoking questions.
 import os
 import time
 import logging
+import json
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
@@ -39,9 +40,9 @@ class SummaryResult:
 @dataclass
 class KolSummaryResult:
     """Structured KOL message interpretation output from Claude API."""
-    plain_summary: str          # 💬 KOL在说什么
-    terms: list[tuple[str, str]]  # 📌 关键词解释
-    sentiment: str              # 📊 观点倾向
+    plain_summary: str              # 💬 KOL在说什么
+    terms: list[tuple[str, str]]    # 📖 术语拆解
+    beginner_perspective: str       # 🧠 小白视角
     raw_response: str
 
 
@@ -77,6 +78,7 @@ class SummarizerClient:
 
     # Valid category tags
     VALID_CATEGORIES = {"#监管", "#比特币", "#以太坊", "#DeFi", "#新项目", "#宏观经济"}
+    VALID_KOL_SENTIMENTS = {"看涨", "看跌", "中立", "提醒风险"}
     
     # Exponential backoff configuration
     MAX_RETRIES = 3
@@ -297,7 +299,7 @@ class SummarizerClient:
                 raw_text = response.content[0].text
                 logger.debug(f"KOL raw response:\n{raw_text}")
                 result = self._parse_kol_response(raw_text)
-                logger.info(f"✅ KOL @{channel} interpreted (sentiment: {result.sentiment})")
+                logger.info(f"✅ KOL @{channel} interpreted")
                 return result
 
             except anthropic.RateLimitError as e:
@@ -325,63 +327,66 @@ class SummarizerClient:
         raise SummarizerError("Unreachable: retry loop should have raised an exception")
 
     def _parse_kol_response(self, raw_text: str) -> KolSummaryResult:
-        """Parse Claude's KOL interpretation response into KolSummaryResult."""
-        if "💬 KOL在说什么：" in raw_text:
-            raw_text = raw_text[raw_text.index("💬 KOL在说什么："):]
+        """Parse Claude's JSON KOL interpretation response into KolSummaryResult."""
+        payload = self._extract_json_object(raw_text)
 
-        lines = raw_text.strip().split('\n')
-        plain_summary = ""
-        terms = []
-        sentiment = ""
-        current_section = None
-
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            if line.startswith("💬 KOL在说什么："):
-                plain_summary = line.replace("💬 KOL在说什么：", "").strip()
-                current_section = "summary"
-
-            elif line.startswith("📌 关键词解释："):
-                current_section = "terms"
-
-            elif line.startswith("📊 观点倾向："):
-                sentiment = line.replace("📊 观点倾向：", "").strip()
-                current_section = "sentiment"
-
-            elif current_section == "terms" and line.startswith("-"):
-                term_line = line.lstrip("- ").strip()
-                if " = " in term_line:
-                    term, explanation = term_line.split(" = ", 1)
-                    terms.append((term.strip(), explanation.strip()))
-                elif "=" in term_line:
-                    term, explanation = term_line.split("=", 1)
-                    terms.append((term.strip(), explanation.strip()))
-
+        plain_summary = str(payload.get("summary", "")).strip()
         if not plain_summary:
-            raise ValueError("Missing required field: KOL在说什么")
-        if not sentiment:
-            sentiment = "中立"
+            raise ValueError("Missing required field: summary")
+
+        raw_terms = payload.get("terms", [])
+        if raw_terms is None:
+            raw_terms = []
+        if not isinstance(raw_terms, list):
+            raise ValueError("Invalid field: terms must be a list")
+
+        terms = []
+        for entry in raw_terms[:3]:
+            if not isinstance(entry, dict):
+                continue
+            term = str(entry.get("term", "")).strip()
+            explanation = str(entry.get("explanation", "")).strip()
+            if term and explanation:
+                terms.append((term, explanation))
+
+        beginner_perspective = str(payload.get("beginner_perspective", "")).strip()
 
         return KolSummaryResult(
             plain_summary=plain_summary,
             terms=terms,
-            sentiment=sentiment,
+            beginner_perspective=beginner_perspective,
             raw_response=raw_text
         )
+
+    def _extract_json_object(self, raw_text: str) -> Dict[str, Any]:
+        """Extract and parse the first JSON object from a model response."""
+        text = raw_text.strip()
+        decoder = json.JSONDecoder()
+
+        for index, char in enumerate(text):
+            if char != "{":
+                continue
+            try:
+                payload, end = decoder.raw_decode(text[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                return payload
+
+        raise ValueError("No valid JSON object found in KOL response")
 
     def format_kol_summary(self, result: KolSummaryResult) -> str:
         """Format a KolSummaryResult into display text for Telegram."""
         output = [f"💬 {result.plain_summary}"]
 
         if result.terms:
-            output.append("\n📌 关键词：")
+            output.append("\n📖 术语拆解：")
             for term, explanation in result.terms:
                 output.append(f"  - {term} = {explanation}")
 
-        output.append(f"\n📊 {result.sentiment}")
+        if result.beginner_perspective:
+            output.append(f"\n🧠 小白视角：{result.beginner_perspective}")
+
         return "\n".join(output)
 
     def _parse_response(self, raw_text: str) -> SummaryResult:
