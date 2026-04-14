@@ -65,33 +65,6 @@ python src/main.py --dry-run
 
 详细步骤见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
----
-
-## 项目结构
-
-```
-web3-news-push/
-├── src/
-│   ├── main.py              # 入口点
-│   ├── scraper.py           # RSS 抓取器
-│   ├── summarizer.py        # AI 摘要生成
-│   ├── classifier.py        # 必读/进阶分类
-│   ├── digest.py            # 消息格式化
-│   ├── dedup.py             # 去重逻辑
-│   ├── telegram_scraper.py  # Telegram 频道抓取
-│   └── telegram_auth.py     # Telegram 认证助手
-├── docs/
-│   ├── project-design.md    # 技术设计文档
-│   ├── telegram-setup.md    # Telegram 配置指南
-│   ├── DEPLOY.md            # 部署步骤
-│   └── ...
-├── assets/
-│   └── banner.svg
-├── db/                      # SQLite 数据库（自动创建）
-├── .env.example
-├── openclaw-cron.yaml       # Cron 配置
-└── requirements.txt
-```
 
 ---
 

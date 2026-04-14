@@ -8,7 +8,6 @@ Orchestrates the entire news pipeline.
 import argparse
 import logging
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -40,13 +39,13 @@ logger = logging.getLogger(__name__)
 
 def send_telegram(channel_id: str, message: str, dry_run: bool = False) -> bool:
     """
-    Send message to Telegram via OpenClaw CLI.
-    
+    Send message to Telegram via Bot API.
+
     Args:
-        channel_id: Telegram channel/chat ID
-        message: Message content
+        channel_id: Telegram chat/channel ID to send to
+        message: Message content (Markdown)
         dry_run: If True, print to console instead of sending
-    
+
     Returns:
         True if successful, False otherwise
     """
@@ -57,39 +56,38 @@ def send_telegram(channel_id: str, message: str, dry_run: bool = False) -> bool:
         print(message)
         print("=" * 80)
         return True
-    
+
     if not channel_id:
         logger.error("TELEGRAM_CHANNEL_ID not configured")
         return False
-    
+
+    bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not bot_token:
+        logger.error("TELEGRAM_BOT_TOKEN not configured")
+        return False
+
     try:
-        cmd = [
-            "openclaw",
-            "message",
-            "send",
-            "--channel", "telegram",
-            "--target", channel_id,
-            "--message", message
-        ]
-        
-        result = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=30
+        import httpx
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        resp = httpx.post(
+            url,
+            json={
+                "chat_id": channel_id,
+                "text": message,
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": True,
+            },
+            timeout=30,
         )
-        
+        resp.raise_for_status()
+        data = resp.json()
+        if not data.get("ok"):
+            logger.error(f"❌ Telegram API error: {data}")
+            return False
         logger.info(f"✅ Message sent successfully to {channel_id}")
         return True
-        
-    except subprocess.CalledProcessError as e:
-        logger.error(f"❌ Failed to send Telegram message: {e}")
-        if e.stderr:
-            logger.error(f"Error output: {e.stderr}")
-        return False
     except Exception as e:
-        logger.error(f"❌ Unexpected error: {e}")
+        logger.error(f"❌ Failed to send Telegram message: {e}")
         return False
 
 
@@ -136,21 +134,21 @@ def main():
         # Step 1: Scrape articles
         logger.info("📰 Step 1/6: Scraping news sources...")
         all_articles = scrape_all_sources()  # RSS sources
-        
-        # Optional: Add Telegram KOL messages
-        if os.getenv('TELEGRAM_API_ID'):
+
+        # Step 1b: Scrape Telegram KOL channels (kept separate from RSS articles)
+        kol_messages = []
+        if os.getenv('TELEGRAM_API_ID') and os.getenv('TELEGRAM_PHONE'):
             try:
                 import asyncio
                 from telegram_scraper import scrape_telegram_sources
                 from telegram_filter import filter_crypto_messages
-                
-                logger.info("   📱 Scraping Telegram sources...")
+
+                logger.info("   📱 Scraping Telegram KOL sources...")
                 telegram_msgs = asyncio.run(scrape_telegram_sources())
-                telegram_articles = filter_crypto_messages(telegram_msgs)
-                all_articles.extend(telegram_articles)
-                logger.info(f"   ✅ Added {len(telegram_articles)} Telegram messages")
+                kol_messages = filter_crypto_messages(telegram_msgs)
+                logger.info(f"   ✅ Got {len(kol_messages)} KOL messages after filtering")
             except Exception as e:
-                logger.warning(f"   ⚠️ Telegram scraping failed: {e}")
+                logger.warning(f"   ⚠️ Telegram KOL scraping failed: {e}")
         
         if not all_articles:
             logger.warning("⚠️ No articles found")
@@ -168,6 +166,14 @@ def main():
         logger.info("🔄 Step 2/6: Deduplicating articles...")
         dedup = ArticleDeduplicator()
         unique_articles = dedup.filter_duplicates(all_articles)
+
+        # Deduplicate KOL messages via the same DB (avoids re-showing same posts)
+        unique_kol = dedup.filter_duplicates(kol_messages) if kol_messages else []
+        max_kol = int(os.getenv('MAX_KOL_MESSAGES', '5'))
+        unique_kol = unique_kol[:max_kol]
+        if unique_kol:
+            logger.info(f"   ✅ {len(unique_kol)} new KOL message(s) to include")
+
         dedup.cleanup_old_entries()
         
         if not unique_articles:
@@ -184,6 +190,24 @@ def main():
         # Step 3: Summarize with AI
         logger.info(f"🤖 Step 3/6: Generating AI summaries ({len(articles_to_process)} articles)...")
         summarizer = SummarizerClient(api_key=anthropic_api_key)
+
+        # Step 3b: AI-interpret KOL messages in beginner-friendly Chinese
+        if unique_kol:
+            logger.info(f"   📱 Generating KOL interpretations ({len(unique_kol)} messages)...")
+            interpreted_kol = []
+            for kol_msg in unique_kol:
+                source = kol_msg.get("source", "")
+                channel = source.split("/")[-1] if "/" in source else source
+                content = kol_msg.get("content", "")
+                try:
+                    kol_result = summarizer.summarize_kol(channel=channel, content=content)
+                    kol_msg = dict(kol_msg)
+                    kol_msg["kol_summary"] = summarizer.format_kol_summary(kol_result)
+                except Exception as e:
+                    logger.warning(f"   ⚠️ Failed to interpret KOL @{channel}: {e}")
+                interpreted_kol.append(kol_msg)
+            unique_kol = interpreted_kol
+            logger.info(f"   ✅ KOL interpretations done")
         
         summarized_articles = []
         for i, article in enumerate(articles_to_process, 1):
@@ -221,7 +245,7 @@ def main():
         # Step 5: Build digest
         logger.info("📝 Step 5/6: Building digest...")
         today = datetime.now().strftime("%Y-%m-%d")
-        messages = build_digest(classified, date=today)
+        messages = build_digest(classified, date=today, kol_messages=unique_kol)
         logger.info(f"✅ Generated {len(messages)} message(s)")
         
         # Step 6: Send to Telegram

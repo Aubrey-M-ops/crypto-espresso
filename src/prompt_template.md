@@ -5,7 +5,7 @@ Title: {title}
 URL: {url}
 Content: {content}
 
-Produce this structured output in Chinese:
+Output ONLY the following structured format. Do not add any text before or after it.
 
 📰 大白话总结：[One sentence summary using ZERO technical jargon]
 
@@ -20,8 +20,9 @@ Produce this structured output in Chinese:
 
 BEGINNER_SCORE: [1-10, where 10 = understandable to someone with zero crypto knowledge]
 
-IMPORTANT: 
+Rules:
 - Use simple, everyday Chinese language
 - Avoid English terms unless absolutely necessary
 - Keep the summary to ONE sentence maximum
 - Each term explanation must be ≤10 Chinese characters
+- Start your response directly with 📰, no preamble

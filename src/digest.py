@@ -6,7 +6,7 @@ Handles Telegram's 4096-character limit by splitting into multiple messages.
 """
 
 from datetime import datetime
-from typing import List, Dict, TypedDict
+from typing import List, Dict, Optional, TypedDict
 
 
 class Article(TypedDict):
@@ -28,6 +28,9 @@ TELEGRAM_MAX_LENGTH = 4096
 
 # Message template parts
 SEPARATOR = "---"
+
+# Max chars shown for a KOL message preview
+KOL_PREVIEW_LENGTH = 200
 
 
 def format_article(article: Article, index: int) -> str:
@@ -53,7 +56,54 @@ def format_article(article: Article, index: int) -> str:
 {article['summary']}"""
 
 
-def build_digest(classified: ClassifiedArticles, date: str = None) -> List[str]:
+def format_kol_message(message: Dict, index: int) -> str:
+    """
+    Format a single KOL Telegram message for display.
+
+    Format:
+    **[Index]. 📣 @channel_name**
+    [Message preview...]
+    🔗 [URL]
+
+    Args:
+        message: Message dict with keys: title, content, url, source, timestamp
+        index: Message number (1-based)
+
+    Returns:
+        Formatted string for one KOL message
+    """
+    source = message.get("source", "")
+    # source is "Telegram/channel_name" → extract channel
+    channel = source.split("/")[-1] if "/" in source else source
+
+    # Use AI-generated summary if available, otherwise fall back to raw preview
+    if message.get("kol_summary"):
+        body = message["kol_summary"]
+    else:
+        content = message.get("content", "").strip()
+        body = content[:KOL_PREVIEW_LENGTH]
+        if len(content) > KOL_PREVIEW_LENGTH:
+            body += "..."
+
+    url = message.get("url", "")
+
+    return f"**{index}. 📣 @{channel}**\n{body}\n🔗 {url}"
+
+
+def _build_kol_section(kol_messages: List[Dict]) -> str:
+    """Build the KOL 观点 section string."""
+    if not kol_messages:
+        return ""
+    section = "\n📱 KOL 观点\n"
+    for i, msg in enumerate(kol_messages, 1):
+        msg_text = format_kol_message(msg, i)
+        section += f"\n{msg_text}\n"
+        if i < len(kol_messages):
+            section += f"\n{SEPARATOR}\n"
+    return section
+
+
+def build_digest(classified: ClassifiedArticles, date: str = None, kol_messages: Optional[List[Dict]] = None) -> List[str]:
     """
     Build complete digest message(s) from classified articles.
     
@@ -79,19 +129,22 @@ def build_digest(classified: ClassifiedArticles, date: str = None) -> List[str]:
     Args:
         classified: Dictionary with 'must_read' and 'advanced' lists
         date: Date string (YYYY-MM-DD), defaults to today
-        
+        kol_messages: Optional list of KOL Telegram message dicts to include
+            as a separate "📱 KOL 观点" section
+
     Returns:
         List of message strings (1 if fits, 2+ if split needed)
     """
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
-    
+
     must_read = classified.get("must_read", [])
     advanced = classified.get("advanced", [])
-    
+    kol = kol_messages or []
+
     # Build header
     header = f"🌅 今日加密货币新闻 | {date}\n"
-    
+
     # Build Must-Read section
     must_read_section = ""
     if must_read:
@@ -101,7 +154,7 @@ def build_digest(classified: ClassifiedArticles, date: str = None) -> List[str]:
             must_read_section += f"\n{article_text}\n"
             if i < len(must_read):
                 must_read_section += f"\n{SEPARATOR}\n"
-    
+
     # Build Advanced section
     advanced_section = ""
     if advanced:
@@ -111,16 +164,19 @@ def build_digest(classified: ClassifiedArticles, date: str = None) -> List[str]:
             advanced_section += f"\n{article_text}\n"
             if i < len(advanced):
                 advanced_section += f"\n{SEPARATOR}\n"
-    
+
+    # Build KOL section
+    kol_section = _build_kol_section(kol)
+
     # Try to fit everything in one message
-    full_message = header + must_read_section + advanced_section
-    
+    full_message = header + must_read_section + advanced_section + kol_section
+
     if len(full_message) <= TELEGRAM_MAX_LENGTH:
         return [full_message.strip()]
-    
+
     # Split into multiple messages
     messages = []
-    
+
     # Message 1: Header + Must-Read
     msg1 = header + must_read_section
     if len(msg1) <= TELEGRAM_MAX_LENGTH:
@@ -129,18 +185,25 @@ def build_digest(classified: ClassifiedArticles, date: str = None) -> List[str]:
         # Must-Read section itself is too long (rare)
         # Split Must-Read into chunks
         messages.extend(_split_section(header, "🟢 必读", must_read))
-    
+
     # Message 2+: Advanced (with continuation header)
+    continuation_header = f"🌅 今日加密货币新闻 | {date} (续)\n"
     if advanced:
-        continuation_header = f"🌅 今日加密货币新闻 | {date} (续)\n"
         msg2 = continuation_header + advanced_section
-        
         if len(msg2) <= TELEGRAM_MAX_LENGTH:
             messages.append(msg2.strip())
         else:
             # Advanced section too long, split into chunks
             messages.extend(_split_section(continuation_header, "🔵 进阶", advanced))
-    
+
+    # KOL section: append to last message if it fits, otherwise new message
+    if kol_section:
+        if messages and len(messages[-1]) + len(kol_section) <= TELEGRAM_MAX_LENGTH:
+            messages[-1] = (messages[-1] + "\n" + kol_section).strip()
+        else:
+            kol_msg = continuation_header + kol_section
+            messages.append(kol_msg.strip())
+
     return messages
 
 

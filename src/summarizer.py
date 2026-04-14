@@ -36,6 +36,15 @@ class SummaryResult:
     raw_response: str
 
 
+@dataclass
+class KolSummaryResult:
+    """Structured KOL message interpretation output from Claude API."""
+    plain_summary: str          # 💬 KOL在说什么
+    terms: list[tuple[str, str]]  # 📌 关键词解释
+    sentiment: str              # 📊 观点倾向
+    raw_response: str
+
+
 class SummarizerError(Exception):
     """Base exception for summarizer errors."""
     pass
@@ -49,12 +58,21 @@ class APIRateLimitError(SummarizerError):
 class SummarizerClient:
     """Claude API client for generating structured article summaries."""
 
-    # Path to prompt template file, relative to this module
+    # Path to prompt template files
     PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "prompt_template.md")
+    KOL_PROMPT_TEMPLATE_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "docs", "kol_prompt_template.md"
+    )
 
     @classmethod
     def _load_prompt_template(cls) -> str:
         with open(cls.PROMPT_TEMPLATE_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+
+    @classmethod
+    def _load_kol_prompt_template(cls) -> str:
+        path = os.path.normpath(cls.KOL_PROMPT_TEMPLATE_PATH)
+        with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
     # Valid category tags
@@ -238,6 +256,134 @@ class SummarizerClient:
         )
         return results
     
+    def summarize_kol(
+        self,
+        channel: str,
+        content: str,
+        max_retries: Optional[int] = None
+    ) -> KolSummaryResult:
+        """
+        Generate a beginner-friendly Chinese interpretation of a KOL message.
+
+        Args:
+            channel: Channel/account name (e.g. "WuBlockchain")
+            content: Raw text content of the KOL post
+            max_retries: Override default retry count
+
+        Returns:
+            KolSummaryResult with parsed structured output
+        """
+        max_retries = max_retries or self.MAX_RETRIES
+
+        if len(content) > 3000:
+            content = content[:3000] + "..."
+
+        prompt = self._load_kol_prompt_template().format(
+            channel=channel,
+            content=content
+        )
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Interpreting KOL @{channel}... (attempt {attempt + 1}/{max_retries})")
+
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=512,
+                    temperature=0.5,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+
+                raw_text = response.content[0].text
+                logger.debug(f"KOL raw response:\n{raw_text}")
+                result = self._parse_kol_response(raw_text)
+                logger.info(f"✅ KOL @{channel} interpreted (sentiment: {result.sentiment})")
+                return result
+
+            except anthropic.RateLimitError as e:
+                backoff = min(self.BASE_BACKOFF * (2 ** attempt), self.MAX_BACKOFF)
+                if attempt < max_retries - 1:
+                    logger.warning(f"Rate limit hit, retrying in {backoff}s...")
+                    time.sleep(backoff)
+                else:
+                    raise APIRateLimitError(
+                        f"API rate limit hit after {max_retries} retries"
+                    ) from e
+
+            except anthropic.APIError as e:
+                logger.error(f"Claude API error: {e}")
+                if attempt < max_retries - 1:
+                    backoff = self.BASE_BACKOFF * (2 ** attempt)
+                    time.sleep(backoff)
+                else:
+                    raise SummarizerError(f"API error after {max_retries} retries: {e}") from e
+
+            except Exception as e:
+                logger.error(f"Unexpected error during KOL interpretation: {e}")
+                raise SummarizerError(f"Failed to interpret KOL message: {e}") from e
+
+        raise SummarizerError("Unreachable: retry loop should have raised an exception")
+
+    def _parse_kol_response(self, raw_text: str) -> KolSummaryResult:
+        """Parse Claude's KOL interpretation response into KolSummaryResult."""
+        if "💬 KOL在说什么：" in raw_text:
+            raw_text = raw_text[raw_text.index("💬 KOL在说什么："):]
+
+        lines = raw_text.strip().split('\n')
+        plain_summary = ""
+        terms = []
+        sentiment = ""
+        current_section = None
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.startswith("💬 KOL在说什么："):
+                plain_summary = line.replace("💬 KOL在说什么：", "").strip()
+                current_section = "summary"
+
+            elif line.startswith("📌 关键词解释："):
+                current_section = "terms"
+
+            elif line.startswith("📊 观点倾向："):
+                sentiment = line.replace("📊 观点倾向：", "").strip()
+                current_section = "sentiment"
+
+            elif current_section == "terms" and line.startswith("-"):
+                term_line = line.lstrip("- ").strip()
+                if " = " in term_line:
+                    term, explanation = term_line.split(" = ", 1)
+                    terms.append((term.strip(), explanation.strip()))
+                elif "=" in term_line:
+                    term, explanation = term_line.split("=", 1)
+                    terms.append((term.strip(), explanation.strip()))
+
+        if not plain_summary:
+            raise ValueError("Missing required field: KOL在说什么")
+        if not sentiment:
+            sentiment = "中立"
+
+        return KolSummaryResult(
+            plain_summary=plain_summary,
+            terms=terms,
+            sentiment=sentiment,
+            raw_response=raw_text
+        )
+
+    def format_kol_summary(self, result: KolSummaryResult) -> str:
+        """Format a KolSummaryResult into display text for Telegram."""
+        output = [f"💬 {result.plain_summary}"]
+
+        if result.terms:
+            output.append("\n📌 关键词：")
+            for term, explanation in result.terms:
+                output.append(f"  - {term} = {explanation}")
+
+        output.append(f"\n📊 {result.sentiment}")
+        return "\n".join(output)
+
     def _parse_response(self, raw_text: str) -> SummaryResult:
         """
         Parse Claude's structured response into SummaryResult.
@@ -251,21 +397,25 @@ class SummarizerClient:
         Raises:
             ValueError: If response format is invalid
         """
+        # Strip any preamble before the first structured marker
+        if "📰 大白话总结：" in raw_text:
+            raw_text = raw_text[raw_text.index("📰 大白话总结："):]
+
         lines = raw_text.strip().split('\n')
-        
+
         plain_summary = ""
         terms = []
         category = ""
         thinking_question = ""
         beginner_score = 0
-        
+
         current_section = None
-        
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-            
+
             # Detect sections
             if line.startswith("📰 大白话总结："):
                 plain_summary = line.replace("📰 大白话总结：", "").strip()
