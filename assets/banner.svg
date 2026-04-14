@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200">
+  <!-- Background -->
+  <rect width="800" height="200" fill="#0d0d0d"/>
+
+  <!-- Pixel grid size: 8px -->
+
+  <!-- Steam particles -->
+  <!-- Left steam -->
+  <rect x="288" y="32" width="8" height="8" fill="#888"/>
+  <rect x="280" y="24" width="8" height="8" fill="#666"/>
+  <rect x="288" y="16" width="8" height="8" fill="#444"/>
+  <!-- Middle steam -->
+  <rect x="320" y="24" width="8" height="8" fill="#888"/>
+  <rect x="320" y="16" width="8" height="8" fill="#666"/>
+  <rect x="312" y="8"  width="8" height="8" fill="#444"/>
+  <!-- Right steam -->
+  <rect x="352" y="32" width="8" height="8" fill="#888"/>
+  <rect x="360" y="24" width="8" height="8" fill="#666"/>
+  <rect x="352" y="16" width="8" height="8" fill="#444"/>
+
+  <!-- Cup top rim -->
+  <rect x="272" y="56" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="280" y="56" width="96" height="8" fill="#e8c49a"/>
+  <rect x="376" y="56" width="8"  height="8" fill="#c8a46e"/>
+
+  <!-- Coffee surface (liquid top) -->
+  <rect x="272" y="64" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="280" y="64" width="8"  height="8" fill="#4a2c0a"/>
+  <rect x="288" y="64" width="8"  height="8" fill="#6b3d12"/>
+  <rect x="296" y="64" width="8"  height="8" fill="#3d1f05"/>
+  <rect x="304" y="64" width="8"  height="8" fill="#5a3010"/>
+  <rect x="312" y="64" width="8"  height="8" fill="#7a4a1a"/>
+  <rect x="320" y="64" width="8"  height="8" fill="#4a2c0a"/>
+  <rect x="328" y="64" width="8"  height="8" fill="#6b3d12"/>
+  <rect x="336" y="64" width="8"  height="8" fill="#3d1f05"/>
+  <rect x="344" y="64" width="8"  height="8" fill="#5a3010"/>
+  <rect x="352" y="64" width="8"  height="8" fill="#4a2c0a"/>
+  <rect x="360" y="64" width="8"  height="8" fill="#6b3d12"/>
+  <rect x="368" y="64" width="8"  height="8" fill="#3d1f05"/>
+  <rect x="376" y="64" width="8"  height="8" fill="#c8a46e"/>
+
+  <!-- Cup body rows -->
+  <!-- Row 1 -->
+  <rect x="264" y="72" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="272" y="72" width="104" height="8" fill="#e0b87a"/>
+  <rect x="376" y="72" width="8"  height="8" fill="#c8a46e"/>
+  <!-- Handle right side -->
+  <rect x="384" y="72" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="392" y="72" width="8"  height="8" fill="#b8944e"/>
+
+  <!-- Row 2 -->
+  <rect x="264" y="80" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="272" y="80" width="104" height="8" fill="#d4aa6a"/>
+  <rect x="376" y="80" width="8"  height="8" fill="#c8a46e"/>
+  <!-- Handle -->
+  <rect x="384" y="80" width="16" height="8" fill="#b8944e"/>
+
+  <!-- Row 3 -->
+  <rect x="264" y="88" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="272" y="88" width="104" height="8" fill="#c8a050"/>
+  <rect x="376" y="88" width="8"  height="8" fill="#c8a46e"/>
+  <!-- Handle bottom -->
+  <rect x="384" y="88" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="392" y="88" width="8"  height="8" fill="#b8944e"/>
+
+  <!-- Cup bottom taper -->
+  <rect x="272" y="96" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="280" y="96" width="88" height="8" fill="#c8a46e"/>
+  <rect x="368" y="96" width="8"  height="8" fill="#c8a46e"/>
+
+  <!-- Saucer -->
+  <rect x="256" y="104" width="8"  height="8" fill="#a07840"/>
+  <rect x="264" y="104" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="272" y="104" width="112" height="8" fill="#e8c47a"/>
+  <rect x="384" y="104" width="8"  height="8" fill="#c8a46e"/>
+  <rect x="392" y="104" width="8"  height="8" fill="#a07840"/>
+
+  <rect x="248" y="112" width="8"  height="8" fill="#a07840"/>
+  <rect x="256" y="112" width="144" height="8" fill="#c8a46e"/>
+  <rect x="400" y="112" width="8"  height="8" fill="#a07840"/>
+
+  <!-- Title text: pixel-style via large rects forming letters -->
+  <!-- "web3-news-push" rendered as text with monospace pixel font -->
+  <text
+    x="440"
+    y="85"
+    font-family="'Courier New', Courier, monospace"
+    font-size="36"
+    font-weight="bold"
+    fill="#e8c47a"
+    letter-spacing="2"
+  >web3-news-push</text>
+
+  <text
+    x="442"
+    y="115"
+    font-family="'Courier New', Courier, monospace"
+    font-size="13"
+    fill="#888888"
+    letter-spacing="1"
+  >每日加密货币新闻  ·  AI 中文摘要  ·  Telegram 推送</text>
+
+  <!-- Decorative pixel dots bottom row -->
+  <rect x="0"   y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="16"  y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="32"  y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="48"  y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="64"  y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="80"  y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="96"  y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="112" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="128" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="144" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="160" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="176" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="192" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="208" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="224" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="240" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="256" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="272" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="288" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="304" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="320" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="336" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="352" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="368" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="384" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="400" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="416" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="432" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="448" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="464" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="480" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="496" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="512" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="528" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="544" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="560" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="576" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="592" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="608" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="624" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="640" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="656" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="672" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="688" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="704" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="720" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="736" y="192" width="8" height="8" fill="#c8a46e"/>
+  <rect x="752" y="192" width="8" height="8" fill="#a07840"/>
+  <rect x="768" y="192" width="8" height="8" fill="#e8c47a"/>
+  <rect x="784" y="192" width="8" height="8" fill="#c8a46e"/>
+</svg>

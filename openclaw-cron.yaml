@@ -1,0 +1,31 @@
+# OpenClaw Cron Configuration for Web3 News Push
+# 
+# 使用方法:
+# 1. 复制这个配置到你的 OpenClaw config.yaml 的 cron 部分
+# 2. 或者在 OpenClaw 配置中 include 这个文件
+#
+# 配置文件位置可能是:
+# - ~/.openclaw/config.yaml
+# - /opt/homebrew/etc/openclaw/config.yaml
+# - 项目根目录的 openclaw.config.yaml
+
+cron:
+  - schedule: "0 8 * * *"
+    task: "cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/main.py"
+    label: "web3-news-push"
+    runtime: "subagent"
+    agentId: "main"
+    timeoutSeconds: 600
+    cleanup: "keep"
+    
+# 说明:
+# - schedule: "0 8 * * *" = 每天早上 8:00 AM
+# - task: 执行主程序
+# - runtime: "subagent" = 使用 OpenClaw 子 agent 运行
+# - timeoutSeconds: 600 = 10 分钟超时（足够处理 10 篇文章）
+# - cleanup: "keep" = 保留日志供调试
+
+# 其他时间示例:
+# "0 8,20 * * *"    = 每天 8:00 和 20:00
+# "0 8 * * 1-5"     = 工作日早上 8:00
+# "*/30 * * * *"    = 每 30 分钟
