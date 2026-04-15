@@ -151,7 +151,7 @@ class SummarizerClient:
                 
                 response = self.client.messages.create(
                     model=self.model,
-                    max_tokens=1024,
+                    max_tokens=1500,
                     temperature=0.7,
                     messages=[
                         {"role": "user", "content": prompt}
@@ -425,10 +425,10 @@ class SummarizerClient:
             if line.startswith("📰 大白话总结："):
                 plain_summary = line.replace("📰 大白话总结：", "").strip()
                 current_section = "summary"
-                
+
             elif line.startswith("📖 术语高亮："):
                 current_section = "terms"
-                
+
             elif line.startswith("🏷️ 分类标签："):
                 category_raw = line.replace("🏷️ 分类标签：", "").strip()
                 # Extract first valid category tag
@@ -437,11 +437,17 @@ class SummarizerClient:
                         category = cat
                         break
                 current_section = "category"
-                
+
             elif line.startswith("💡 延伸一问："):
                 thinking_question = line.replace("💡 延伸一问：", "").strip()
                 current_section = "thinking"
-                
+
+            elif line.startswith("💡 答："):
+                answer = line.replace("💡 答：", "").strip()
+                if answer:
+                    thinking_question = thinking_question + "\n💡 答：" + answer
+                current_section = "thinking_answer"
+
             elif line.startswith("BEGINNER_SCORE:"):
                 score_str = line.replace("BEGINNER_SCORE:", "").strip()
                 try:
@@ -453,7 +459,11 @@ class SummarizerClient:
                     logger.warning(f"Invalid score format: {score_str}, defaulting to 5")
                     beginner_score = 5
                 current_section = "score"
-                
+
+            elif current_section == "summary":
+                # Accumulate multi-line summary
+                plain_summary += "\n" + line
+
             elif current_section == "terms" and line.startswith("-"):
                 # Parse term line: "- Term = explanation"
                 term_line = line.lstrip("- ").strip()

@@ -7,7 +7,7 @@ Content: {content}
 
 Output ONLY the following structured format. Do not add any text before or after it.
 
-📰 大白话总结：[One sentence summary using ZERO technical jargon]
+📰 大白话总结：[3-5句话段落：发生了什么事、为什么重要、读者需要知道什么。使用零技术术语，用日常口语表达。]
 
 📖 术语高亮：
   - [Term 1] = [10-word max plain explanation]
@@ -16,13 +16,14 @@ Output ONLY the following structured format. Do not add any text before or after
 
 🏷️ 分类标签：[SELECT EXACTLY ONE: #监管 | #比特币 | #以太坊 | #DeFi | #新项目 | #宏观经济]
 
-💡 延伸一问：[One open-ended thinking question connecting to real-world impact]
+💡 延伸一问：[一个联系现实影响的思考问题]
+💡 答：[针对上面问题的具体回答，2-3句话，给出明确观点和理由]
 
 BEGINNER_SCORE: [1-10, where 10 = understandable to someone with zero crypto knowledge]
 
 Rules:
 - Use simple, everyday Chinese language
 - Avoid English terms unless absolutely necessary
-- Keep the summary to ONE sentence maximum
+- Write the summary as 3-5 complete sentences covering what, why, and so what
 - Each term explanation must be ≤10 Chinese characters
 - Start your response directly with 📰, no preamble
