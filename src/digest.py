@@ -91,7 +91,7 @@ def format_kol_message(message: Dict, index: int) -> str:
 
 
 def _build_kol_section(kol_messages: List[Dict]) -> str:
-    """Build the KOL 观点 section string."""
+    """Build the KOL 观点 section string (no length check)."""
     if not kol_messages:
         return ""
     section = "\n📱 KOL 观点\n"
@@ -101,6 +101,32 @@ def _build_kol_section(kol_messages: List[Dict]) -> str:
         if i < len(kol_messages):
             section += f"\n{SEPARATOR}\n"
     return section
+
+
+def _split_kol_section(kol_messages: List[Dict], header: str) -> List[str]:
+    """Split KOL messages into multiple Telegram-sized chunks."""
+    chunks = []
+    current = f"{header}\n📱 KOL 观点\n"
+    global_index = 1
+
+    for msg in kol_messages:
+        msg_text = format_kol_message(msg, global_index)
+        separator = f"\n{SEPARATOR}\n" if global_index > 1 and current != f"{header}\n📱 KOL 观点\n" else "\n"
+        candidate = current + separator + msg_text + "\n"
+
+        if len(candidate) <= TELEGRAM_MAX_LENGTH:
+            current = candidate
+        else:
+            if current.strip():
+                chunks.append(current)
+            current = f"{header}\n📱 KOL 观点 (续)\n\n{msg_text}\n"
+
+        global_index += 1
+
+    if current.strip():
+        chunks.append(current)
+
+    return chunks if chunks else [header]
 
 
 def build_digest(classified: ClassifiedArticles, date: str = None, kol_messages: Optional[List[Dict]] = None) -> List[str]:
@@ -196,13 +222,14 @@ def build_digest(classified: ClassifiedArticles, date: str = None, kol_messages:
             # Advanced section too long, split into chunks
             messages.extend(_split_section(continuation_header, "🔵 进阶", advanced))
 
-    # KOL section: append to last message if it fits, otherwise new message
-    if kol_section:
-        if messages and len(messages[-1]) + len(kol_section) <= TELEGRAM_MAX_LENGTH:
-            messages[-1] = (messages[-1] + "\n" + kol_section).strip()
+    # KOL section: split into chunks if needed, then append/attach
+    if kol:
+        kol_chunks = _split_kol_section(kol, continuation_header)
+        if messages and len(messages[-1]) + len(kol_chunks[0]) <= TELEGRAM_MAX_LENGTH:
+            messages[-1] = (messages[-1] + "\n" + kol_chunks[0]).strip()
+            messages.extend(chunk.strip() for chunk in kol_chunks[1:])
         else:
-            kol_msg = continuation_header + kol_section
-            messages.append(kol_msg.strip())
+            messages.extend(chunk.strip() for chunk in kol_chunks)
 
     return messages
 

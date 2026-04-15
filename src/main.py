@@ -69,16 +69,24 @@ def send_telegram(channel_id: str, message: str, dry_run: bool = False) -> bool:
     try:
         import httpx
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        resp = httpx.post(
-            url,
-            json={
-                "chat_id": channel_id,
-                "text": message,
-                "parse_mode": "Markdown",
-                "disable_web_page_preview": True,
-            },
-            timeout=30,
-        )
+
+        payload = {
+            "chat_id": channel_id,
+            "text": message,
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": True,
+        }
+        resp = httpx.post(url, json=payload, timeout=30)
+
+        # Fallback: if Markdown causes 400, retry as plain text
+        if resp.status_code == 400:
+            logger.warning(f"⚠️ Telegram 400 error: {resp.text}")
+            logger.warning("⚠️ Retrying as plain text...")
+            payload.pop("parse_mode")
+            resp = httpx.post(url, json=payload, timeout=30)
+            if resp.status_code == 400:
+                logger.error(f"❌ Plain text also failed: {resp.text}")
+
         resp.raise_for_status()
         data = resp.json()
         if not data.get("ok"):
@@ -111,6 +119,16 @@ def main():
         type=int,
         help='Max articles to process (default: from env or 10)'
     )
+    parser.add_argument(
+        '--kol-only',
+        action='store_true',
+        help='Only scrape and send KOL messages, skip news articles'
+    )
+    parser.add_argument(
+        '--no-dedup',
+        action='store_true',
+        help='Skip deduplication (send all scraped content regardless of seen history)'
+    )
     
     args = parser.parse_args()
     
@@ -129,11 +147,13 @@ def main():
     logger.info("🚀 Starting Web3 News Push...")
     logger.info(f"📊 Max articles: {max_articles}")
     logger.info(f"🔍 Dry run: {args.dry_run}")
+    logger.info(f"📱 KOL only: {args.kol_only}")
+    logger.info(f"🔄 No dedup: {args.no_dedup}")
     
     try:
         # Step 1: Scrape articles
         logger.info("📰 Step 1/6: Scraping news sources...")
-        all_articles = scrape_all_sources()  # RSS sources
+        all_articles = [] if args.kol_only else scrape_all_sources()
 
         # Step 1b: Scrape Telegram KOL channels (kept separate from RSS articles)
         kol_messages = []
@@ -150,7 +170,7 @@ def main():
             except Exception as e:
                 logger.warning(f"   ⚠️ Telegram KOL scraping failed: {e}")
         
-        if not all_articles:
+        if not all_articles and not args.kol_only:
             logger.warning("⚠️ No articles found")
             if not args.dry_run and telegram_channel_id:
                 send_telegram(
@@ -164,29 +184,35 @@ def main():
         
         # Step 2: Deduplicate
         logger.info("🔄 Step 2/6: Deduplicating articles...")
-        dedup = ArticleDeduplicator()
-        unique_articles = dedup.filter_duplicates(all_articles)
-
-        # Deduplicate KOL messages via the same DB (avoids re-showing same posts)
-        unique_kol = dedup.filter_duplicates(kol_messages) if kol_messages else []
         max_kol = int(os.getenv('MAX_KOL_MESSAGES', '5'))
-        unique_kol = unique_kol[:max_kol]
-        if unique_kol:
-            logger.info(f"   ✅ {len(unique_kol)} new KOL message(s) to include")
 
-        dedup.cleanup_old_entries()
-        
-        if not unique_articles:
-            logger.info("✅ No new articles (all duplicates)")
-            return 0
-        
-        logger.info(f"✅ {len(unique_articles)} unique articles")
+        if args.no_dedup:
+            logger.info("   ⏭️ Skipping deduplication (--no-dedup)")
+            unique_articles = all_articles
+            unique_kol = kol_messages[:max_kol] if kol_messages else []
+        else:
+            dedup = ArticleDeduplicator()
+            unique_articles = dedup.filter_duplicates(all_articles)
+            unique_kol = dedup.filter_duplicates(kol_messages) if kol_messages else []
+            unique_kol = unique_kol[:max_kol]
+            dedup.cleanup_old_entries()
+
+        if unique_kol:
+            logger.info(f"   ✅ {len(unique_kol)} KOL message(s) to include")
+
+        if not args.kol_only:
+            if not unique_articles:
+                logger.info("✅ No new articles (all duplicates)")
+                if not kol_messages:
+                    return 0
+            else:
+                logger.info(f"✅ {len(unique_articles)} unique articles")
         
         # Limit to max_articles
-        articles_to_process = unique_articles[:max_articles]
-        if len(unique_articles) > max_articles:
+        articles_to_process = [] if args.kol_only else unique_articles[:max_articles]
+        if not args.kol_only and len(unique_articles) > max_articles:
             logger.info(f"📉 Limiting to {max_articles} articles")
-        
+
         # Step 3: Summarize with AI
         logger.info(f"🤖 Step 3/6: Generating AI summaries ({len(articles_to_process)} articles)...")
         summarizer = SummarizerClient(api_key=anthropic_api_key)
@@ -231,15 +257,15 @@ def main():
                 logger.error(f"   ❌ Failed to summarize article {i}: {e}")
                 continue
         
-        if not summarized_articles:
+        if not summarized_articles and not args.kol_only:
             logger.error("❌ No articles successfully summarized")
             return 1
-        
+
         logger.info(f"✅ Summarized {len(summarized_articles)} articles")
         
         # Step 4: Classify
         logger.info("📊 Step 4/6: Classifying articles...")
-        classified = classify_articles(summarized_articles)
+        classified = classify_articles(summarized_articles) if summarized_articles else {"must_read": [], "advanced": []}
         logger.info(f"✅ Must-Read: {len(classified['must_read'])}, Advanced: {len(classified['advanced'])}")
         
         # Step 5: Build digest
