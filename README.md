@@ -2,13 +2,13 @@
 
 # web3-news-push
 
-每日自动抓取主流加密货币新闻，Claude AI 生成大白话中文摘要，自动推送 Telegram 频道。
+[**➜ 订阅频道：t.me/morningm_news**](https://t.me/morningm_news)
+
+本项目是 Telegram 频道 [@morningm_news](https://t.me/morningm_news) 的开源推送源码。每天 08:00 和 17:00 自动抓取主流加密货币新闻，用我这种丈育也能看懂的语言总结，适合地铁看手机的时候汲取碎片信息。
 
 ---
 
-## 功能状态
-
-**核心功能 (100%)**
+## 功能
 
 | 功能 | 状态 |
 |------|------|
@@ -17,19 +17,12 @@
 | 智能分类（必读 / 进阶） | ✅ |
 | Telegram 自动推送 | ✅ |
 | 去重机制（7 天哈希窗口） | ✅ |
-
-**Telegram KOL 抓取（代码完成，待配置）**
-
-| 功能 | 状态 |
-|------|------|
-| Telethon 认证模块 | ✅ |
-| 频道消息抓取 | ✅ |
-| 内容过滤 | ✅ |
-| API 凭证配置 | ⏳ |
+| 每日 08:00 + 17:00 定时推送 | ✅ |
+| Telegram KOL 频道抓取 | ✅ |
 
 ---
 
-## 快速开始
+## 快速开始（自部署）
 
 ### 1. 安装依赖
 
@@ -41,16 +34,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-```
-
-编辑 `.env`：
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-...        # Claude API Key
-TELEGRAM_BOT_TOKEN=...              # Telegram Bot Token
-TELEGRAM_CHANNEL_ID=@yourchannel   # 频道 ID
-TELEGRAM_API_ID=...                 # Telegram App ID（来自 my.telegram.org）
-TELEGRAM_API_HASH=...               # Telegram App Hash
+# 编辑 .env，填入 ANTHROPIC_API_KEY、TELEGRAM_BOT_TOKEN、TELEGRAM_CHANNEL_ID
 ```
 
 ### 3. 测试运行
@@ -59,19 +43,21 @@ TELEGRAM_API_HASH=...               # Telegram App Hash
 python src/main.py --dry-run
 ```
 
-### 4. 定时部署（OpenClaw Cron）
+### 4. 安装定时任务
 
-将 `openclaw-cron.yaml` 中的配置添加到 `~/.openclaw/config.yaml`，每天早上 8 点自动推送。
+```bash
+chmod +x run.sh
+(crontab -l 2>/dev/null; echo "0 8,17 * * * $(pwd)/run.sh") | crontab -
+```
 
 详细步骤见 [docs/DEPLOY.md](docs/DEPLOY.md)。
-
 
 ---
 
 ## 输出示例
 
 ```
-🌅 今日加密货币新闻 | 2026-04-13
+🌅 今日加密货币新闻 | 2026-04-14
 
 🟢 必读
 
@@ -93,44 +79,20 @@ python src/main.py --dry-run
 
 ---
 
-## 调试
-
-```bash
-# 查看运行日志
-tail -f ~/.openclaw/logs/cron.log | grep "web3-news"
-
-# 手动执行一次
-python src/main.py
-
-# 检查去重数据库
-sqlite3 db/articles.db "SELECT title, timestamp FROM seen_articles ORDER BY timestamp DESC LIMIT 10;"
-```
-
----
-
 ## 技术栈
 
-- **Python 3.11+**
+- **Python 3.10+**
 - **feedparser** — RSS 解析
-- **httpx** — 异步 HTTP
+- **httpx** — HTTP 请求
 - **anthropic** — Claude API
 - **telethon** — Telegram KOL 抓取
 - **SQLite** — 本地去重存储
-- **OpenClaw** — 定时调度 + Bot 推送
+- **cron** — 定时调度
 
-## 成本参考
-
-- Claude API：约 $0.05–0.10 / 天（处理 5–10 篇文章）
-- 无需额外服务器：本地 OpenClaw 实例运行
-
----
 
 ## 文档
 
-- [技术设计](docs/project-design.md)
 - [部署指南](docs/DEPLOY.md)
+- [技术设计](docs/project-design.md)
 - [Telegram 配置](docs/telegram-setup.md)
 
-## License
-
-MIT

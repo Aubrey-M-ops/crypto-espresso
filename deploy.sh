@@ -49,32 +49,33 @@ else
     exit 1
 fi
 
-# 4. 显示 cron 配置
+# 4. 安装/检查 crontab
 echo ""
-echo "⏰ Step 4/5: OpenClaw Cron 配置"
+echo "⏰ Step 4/5: 检查系统 Cron 配置"
 echo "================================"
-echo "添加以下配置到你的 OpenClaw config.yaml:"
-echo ""
-cat openclaw-cron.yaml | grep -A 10 "cron:"
-echo ""
-echo "配置文件可能位置:"
-echo "  - ~/.openclaw/config.yaml"
-echo "  - 项目根目录/openclaw.config.yaml"
+if crontab -l 2>/dev/null | grep -q "web3-news-push/run.sh"; then
+    echo "✅ Cron 已配置："
+    crontab -l | grep "web3-news-push"
+else
+    echo "⚠️  Cron 未配置，正在安装..."
+    chmod +x run.sh
+    (crontab -l 2>/dev/null; echo "0 8,17 * * * $PROJECT_DIR/run.sh") | crontab -
+    echo "✅ Cron 已安装（每天 08:00 和 17:00）"
+fi
 echo ""
 
-# 5. 重启提示
-echo "🔄 Step 5/5: 重启 OpenClaw"
+# 5. 完成提示
+echo "🎉 Step 5/5: 部署完成"
 echo "================================"
-echo "配置完成后，运行:"
-echo "  openclaw gateway restart"
-echo ""
-echo "检查 cron 任务:"
-echo "  openclaw cron list"
-echo ""
-
 echo "✅ 部署检查完成！"
 echo ""
-echo "📊 下一步:"
-echo "  1. 将 openclaw-cron.yaml 中的 cron 配置复制到 OpenClaw config"
-echo "  2. 运行 'openclaw gateway restart'"
-echo "  3. 明早 8:00 查收第一条推送！"
+echo "📊 下一步（如果还没做）:"
+echo "  1. 在 Telegram APP 中将频道设为公开，设置 @username"
+echo "  2. 把频道链接分享给订阅者"
+echo "  3. 等待 08:00 或 17:00 自动推送！"
+echo ""
+echo "🔍 查看日志:"
+echo "  tail -f logs/cron_\$(date +%Y%m%d).log"
+echo ""
+echo "📋 查看 Cron 任务:"
+echo "  crontab -l"

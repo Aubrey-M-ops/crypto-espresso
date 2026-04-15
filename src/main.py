@@ -224,7 +224,12 @@ def main():
             for kol_msg in unique_kol:
                 source = kol_msg.get("source", "")
                 channel = source.split("/")[-1] if "/" in source else source
-                content = kol_msg.get("content", "")
+                content = kol_msg.get("content", "").strip()
+                # Skip AI interpretation for image-only / link-only posts (too short to summarize)
+                if len(content) < 30:
+                    logger.info(f"   ⏭️ Skipping KOL @{channel} (content too short, using raw preview)")
+                    interpreted_kol.append(kol_msg)
+                    continue
                 try:
                     kol_result = summarizer.summarize_kol(channel=channel, content=content)
                     kol_msg = dict(kol_msg)

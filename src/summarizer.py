@@ -364,16 +364,87 @@ class SummarizerClient:
             raw_response=raw_text
         )
 
+    def _escape_inner_quotes(self, json_str: str) -> str:
+        """
+        Fix unescaped double-quotes inside JSON string values.
+
+        Uses a state machine: when inside a string, a '"' is treated as
+        closing only if the next non-whitespace char is a structural JSON
+        character (: , } ] { [). Otherwise it's escaped as \\".
+        """
+        out = []
+        in_string = False
+        i = 0
+        n = len(json_str)
+        while i < n:
+            c = json_str[i]
+            if c == '\\' and in_string and i + 1 < n:
+                out.append(c)
+                out.append(json_str[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                if not in_string:
+                    in_string = True
+                    out.append(c)
+                    i += 1
+                    continue
+                # Inside a string — closing or inner quote?
+                j = i + 1
+                while j < n and json_str[j] in ' \t\n\r':
+                    j += 1
+                next_char = json_str[j] if j < n else ''
+                if next_char in (':', ',', '}', ']', '{', '[', ''):
+                    in_string = False
+                    out.append(c)
+                else:
+                    out.append('\\"')
+                i += 1
+                continue
+            out.append(c)
+            i += 1
+        return ''.join(out)
+
     def _extract_json_object(self, raw_text: str) -> Dict[str, Any]:
         """Extract and parse the first JSON object from a model response."""
+        import re
         text = raw_text.strip()
         decoder = json.JSONDecoder()
 
+        # 1. Try ```json ... ``` code block (most reliable boundary)
+        code_block = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+        if code_block:
+            block = code_block.group(1).strip()
+            try:
+                payload = json.loads(block)
+                if isinstance(payload, dict):
+                    return payload
+            except json.JSONDecodeError:
+                pass
+            try:
+                payload = json.loads(self._escape_inner_quotes(block))
+                if isinstance(payload, dict):
+                    return payload
+            except json.JSONDecodeError:
+                pass
+
+        # 2. Standard scan
         for index, char in enumerate(text):
-            if char != "{":
+            if char != '{':
                 continue
             try:
-                payload, end = decoder.raw_decode(text[index:])
+                payload, _ = decoder.raw_decode(text[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                return payload
+
+        # 3. Sanitized scan: escape inner quotes then try raw_decode
+        for index, char in enumerate(text):
+            if char != '{':
+                continue
+            try:
+                payload, _ = decoder.raw_decode(self._escape_inner_quotes(text[index:]))
             except json.JSONDecodeError:
                 continue
             if isinstance(payload, dict):

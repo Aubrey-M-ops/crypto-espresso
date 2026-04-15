@@ -1,20 +1,16 @@
 # 部署指南
 
-## 当前状态
+## 模块说明
 
-✅ **代码已完成** - 所有核心模块已实现
-- `src/scraper.py` - RSS 抓取（4 个新闻源）
-- `src/dedup.py` - SQLite 去重（7 天窗口）
-- `src/summarizer.py` - Claude API 摘要生成
-- `src/classifier.py` - 文章分类（必读/进阶）
-- `src/digest.py` - Telegram 消息格式化
-- `src/main.py` - 主入口编排
-
-❌ **待完成**:
-1. 安装依赖
-2. 配置环境变量
-3. 测试运行
-4. 部署到 OpenClaw cron
+| 文件 | 功能 |
+|------|------|
+| `src/scraper.py` | RSS 抓取（4 个新闻源） |
+| `src/dedup.py` | SQLite 去重（7 天窗口） |
+| `src/summarizer.py` | Claude API 摘要生成 |
+| `src/classifier.py` | 文章分类（必读 / 进阶） |
+| `src/digest.py` | Telegram 消息格式化 |
+| `src/main.py` | 主入口编排 |
+| `run.sh` | Cron 调用入口，负责加载 `.env` 和写日志 |
 
 ---
 
@@ -24,7 +20,7 @@
 
 ```bash
 cd /Users/limohan/code_projects/web3/web3-news-push
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 2. 配置环境变量
@@ -33,113 +29,112 @@ pip3 install -r requirements.txt
 cp .env.example .env
 ```
 
-编辑 `.env` 填入:
-```bash
-TELEGRAM_CHANNEL_ID=-1001234567890    # 从 @userinfobot 获取
-ANTHROPIC_API_KEY=sk-ant-...          # Claude API key
-```
-
-### 3. 测试导入
+编辑 `.env`：
 
 ```bash
-python3 test/test_import.py
+ANTHROPIC_API_KEY=sk-ant-...        # Claude API Key
+TELEGRAM_BOT_TOKEN=...              # Telegram Bot Token
+TELEGRAM_CHANNEL_ID=@morningm_news  # 频道 ID 或 @username
+TELEGRAM_API_ID=...                 # Telegram App ID（来自 my.telegram.org，KOL 抓取用）
+TELEGRAM_API_HASH=...               # Telegram App Hash（KOL 抓取用）
 ```
 
-### 4. 干跑测试（不发送到 Telegram）
+### 3. 干跑测试（不发送到 Telegram）
 
 ```bash
-python3 src/main.py --dry-run --max-articles 3 --verbose
+python src/main.py --dry-run --max-articles 3 --verbose
 ```
 
-### 5. 真实运行（单次）
+### 4. 真实运行（单次）
 
 ```bash
-python3 src/main.py --max-articles 5
+bash run.sh
 ```
 
-### 6. 部署到 OpenClaw Cron
+### 5. 安装系统 Cron（每天 08:00 和 17:00）
 
-编辑 `~/.openclaw/config.yaml`:
-
-```yaml
-cron:
-  - schedule: "0 8 * * *"  # 每天早上 8:00
-    task: "cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/main.py"
-    runtime: "subagent"
-    agentId: "main"
-    timeoutSeconds: 600
-    cleanup: "keep"
-```
-
-重启 OpenClaw:
 ```bash
-openclaw gateway restart
+chmod +x run.sh
+(crontab -l 2>/dev/null; echo "0 8,17 * * * $(pwd)/run.sh") | crontab -
+```
+
+验证已安装：
+
+```bash
+crontab -l
 ```
 
 ---
 
-## 验证部署
+## 验证
 
-### 查看 cron 日志
+### 检查 Cron 是否注册
+
 ```bash
-tail -f ~/.openclaw/logs/cron.log | grep "web3-news"
+crontab -l
+# 应看到：0 8,17 * * * .../run.sh
 ```
 
-### 手动触发测试
+### 手动触发一次（完整流程）
+
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push
-python3 src/main.py --dry-run
+bash run.sh
 ```
 
-### 检查数据库
+### 查看当天日志
+
 ```bash
-sqlite3 db/articles.db "SELECT COUNT(*) FROM seen_articles;"
+tail -f logs/cron_$(date +%Y%m%d).log
+```
+
+### 确认消息已发出
+
+打开频道 https://t.me/morningm_news，检查是否有新消息。
+
+### 检查去重数据库
+
+```bash
+sqlite3 db/articles.db "SELECT title, timestamp FROM seen_articles ORDER BY timestamp DESC LIMIT 10;"
 ```
 
 ---
 
 ## 故障排除
 
-### 依赖安装失败
-```bash
-# 升级 pip
-pip3 install --upgrade pip
+### 脚本没有执行
 
-# 逐个安装
-pip3 install feedparser httpx anthropic python-dotenv
+```bash
+# 检查 crontab
+crontab -l
+
+# 检查 run.sh 是否可执行
+ls -l run.sh
+
+# 手动执行确认无报错
+bash run.sh
+```
+
+### Telegram 发送失败
+
+```bash
+# 检查 Bot 是否已加入频道并具有发送权限
+# 在 Telegram 中：频道设置 → 管理员 → 确认 Bot 在列表中
+
+# 检查环境变量是否正确加载
+grep TELEGRAM .env
 ```
 
 ### API Key 不工作
+
 ```bash
-# 验证环境变量
 source .env
 echo $ANTHROPIC_API_KEY
 ```
 
-### Telegram 发送失败
-```bash
-# 测试 OpenClaw message tool
-openclaw message send --channel telegram --target $TELEGRAM_CHANNEL_ID --message "测试"
-```
-
 ---
 
-## 成本估算
+## 成本参考
 
-- **Claude API**: ~$0.05-0.10 / 天
-  - 假设处理 5-10 篇文章
-  - 每篇 ~1k tokens input + ~500 tokens output
-  - Sonnet-4-5: $3/M input, $15/M output
-  - 计算: (10 * 1000 * 3 + 10 * 500 * 15) / 1,000,000 ≈ $0.10
-
-- **无额外服务器成本** - 运行在本地 OpenClaw 实例
-
----
-
-## 下一步优化
-
-- [ ] 添加单元测试（`tests/`目录）
-- [ ] 错误通知（失败时发 Telegram 告警）
-- [ ] 用户订阅管理（允许加入/退出）
-- [ ] 多语言支持（英文摘要）
-- [ ] Web 仪表盘（查看历史摘要）
+- **Claude API**：约 $0.05–0.10 / 次（处理 5–10 篇文章）
+- **每天两次推送**：约 $0.10–0.20 / 天
+- **无服务器费用**：本地 cron 运行，不需要 VPS
