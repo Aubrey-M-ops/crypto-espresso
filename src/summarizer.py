@@ -297,7 +297,6 @@ class SummarizerClient:
                 )
 
                 raw_text = response.content[0].text
-                logger.debug(f"KOL raw response:\n{raw_text}")
                 result = self._parse_kol_response(raw_text)
                 logger.info(f"✅ KOL @{channel} interpreted")
                 return result
@@ -328,17 +327,24 @@ class SummarizerClient:
 
     def _parse_kol_response(self, raw_text: str) -> KolSummaryResult:
         """Parse Claude's JSON KOL interpretation response into KolSummaryResult."""
-        payload = self._extract_json_object(raw_text)
+        logger.debug(f"KOL raw response to parse:\n{raw_text}")
 
-        plain_summary = str(payload.get("summary", "")).strip()
+        try:
+            payload = self._extract_json_object(raw_text)
+        except ValueError as e:
+            logger.warning(f"Could not extract JSON from KOL response: {e}\nRaw text: {raw_text[:500]}")
+            raise
+
+        plain_summary = str(payload.get("summary") or "").strip()
         if not plain_summary:
+            logger.warning(f"KOL response missing 'summary' field. Full payload keys: {list(payload.keys())}\nRaw: {raw_text[:500]}")
             raise ValueError("Missing required field: summary")
 
         raw_terms = payload.get("terms", [])
         if raw_terms is None:
             raw_terms = []
         if not isinstance(raw_terms, list):
-            raise ValueError("Invalid field: terms must be a list")
+            raw_terms = []
 
         terms = []
         for entry in raw_terms[:3]:
@@ -349,7 +355,7 @@ class SummarizerClient:
             if term and explanation:
                 terms.append((term, explanation))
 
-        beginner_perspective = str(payload.get("beginner_perspective", "")).strip()
+        beginner_perspective = str(payload.get("beginner_perspective") or "").strip()
 
         return KolSummaryResult(
             plain_summary=plain_summary,

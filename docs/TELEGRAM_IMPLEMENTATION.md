@@ -67,7 +67,7 @@ python src/telegram_auth.py
 
 ---
 
-### 3. `test_telegram.py` (4.5 KB)
+### 3. `test/test_telegram.py` (4.5 KB)
 **Purpose**: Comprehensive test and validation script
 
 **Test Steps**:
@@ -79,7 +79,7 @@ python src/telegram_auth.py
 
 **Usage**:
 ```bash
-python test_telegram.py
+python test/test_telegram.py
 ```
 
 **Output**:
@@ -244,7 +244,7 @@ main.py
 
 - [x] `telegram_auth.py` - Interactive setup works
 - [x] `telegram_scraper.py` - Standalone scraping works
-- [x] `test_telegram.py` - Validation script passes
+- [x] `test/test_telegram.py` - Validation script passes
 - [x] Integration with `scraper.py` - Combined RSS + Telegram works
 - [x] `main.py --dry-run` - Full pipeline works
 - [x] Folder filtering works (when `TELEGRAM_FOLDER_ID` is set)
@@ -268,7 +268,7 @@ TELEGRAM_API_HASH=abcdef1234567890...
 python src/telegram_auth.py
 
 # 4. Test
-python test_telegram.py
+python test/test_telegram.py
 
 # 5. Run full pipeline
 python src/main.py --dry-run

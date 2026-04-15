@@ -42,7 +42,7 @@ ANTHROPIC_API_KEY=sk-ant-...          # Claude API key
 ### 3. 测试导入
 
 ```bash
-python3 test_import.py
+python3 test/test_import.py
 ```
 
 ### 4. 干跑测试（不发送到 Telegram）
