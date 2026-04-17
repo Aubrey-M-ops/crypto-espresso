@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
 import anthropic
+import httpx
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -84,6 +85,7 @@ class SummarizerClient:
     MAX_RETRIES = 3
     BASE_BACKOFF = 2  # seconds
     MAX_BACKOFF = 60  # seconds
+    REQUEST_TIMEOUT = float(os.getenv("ANTHROPIC_REQUEST_TIMEOUT", "45"))
     
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -102,9 +104,16 @@ class SummarizerClient:
                 "Set it in .env or pass as argument."
             )
         
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.client = anthropic.Anthropic(
+            api_key=self.api_key,
+            timeout=self.REQUEST_TIMEOUT,
+            max_retries=0,
+        )
         self.model = "claude-sonnet-4-5"
-        logger.info(f"Initialized SummarizerClient with model: {self.model}")
+        logger.info(
+            f"Initialized SummarizerClient with model: {self.model} "
+            f"(timeout: {self.REQUEST_TIMEOUT}s)"
+        )
     
     def summarize(
         self,
@@ -187,6 +196,19 @@ class SummarizerClient:
                         f"API rate limit hit after {max_retries} retries"
                     ) from e
                     
+            except (anthropic.APIConnectionError, httpx.TimeoutException) as e:
+                backoff = min(self.BASE_BACKOFF * (2 ** attempt), self.MAX_BACKOFF)
+                logger.warning(
+                    f"Claude request timed out or connection failed after {self.REQUEST_TIMEOUT}s: {e}"
+                )
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {backoff}s...")
+                    time.sleep(backoff)
+                else:
+                    raise SummarizerError(
+                        f"Claude request timed out after {max_retries} retries"
+                    ) from e
+
             except anthropic.APIError as e:
                 logger.error(f"Claude API error: {e}")
                 if attempt < max_retries - 1:
@@ -309,6 +331,18 @@ class SummarizerClient:
                 else:
                     raise APIRateLimitError(
                         f"API rate limit hit after {max_retries} retries"
+                    ) from e
+
+            except (anthropic.APIConnectionError, httpx.TimeoutException) as e:
+                backoff = min(self.BASE_BACKOFF * (2 ** attempt), self.MAX_BACKOFF)
+                logger.warning(
+                    f"Claude request timed out or connection failed after {self.REQUEST_TIMEOUT}s: {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(backoff)
+                else:
+                    raise SummarizerError(
+                        f"Claude request timed out after {max_retries} retries"
                     ) from e
 
             except anthropic.APIError as e:

@@ -123,21 +123,9 @@ def scrape_all_sources() -> List[Dict[str, str]]:
         articles = fetch_feed(source_name, feed_url)
         all_articles.extend(articles)
     
-    # Scrape Telegram channels (if configured)
-    try:
-        # Only import if Telegram credentials are available
-        if os.getenv('TELEGRAM_API_ID') and os.getenv('TELEGRAM_API_HASH'):
-            from telegram_scraper import scrape_telegram_sync
-            logger.info("Attempting to scrape Telegram sources...")
-            telegram_articles = scrape_telegram_sync()
-            all_articles.extend(telegram_articles)
-        else:
-            logger.debug("Telegram scraper not configured (skipping)")
-    except ImportError as e:
-        logger.warning(f"Telegram scraper dependencies not installed: {e}")
-    except Exception as e:
-        logger.error(f"Telegram scraper failed (continuing with RSS): {e}")
-    
+    # Telegram KOL scraping is handled separately in src/main.py.
+    # Keep RSS scraping isolated here to avoid duplicate work and confusing import warnings.
+
     logger.info(f"Total articles scraped: {len(all_articles)}")
     return all_articles
 

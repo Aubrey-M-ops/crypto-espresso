@@ -203,7 +203,8 @@ def main():
         if not args.kol_only:
             if not unique_articles:
                 logger.info("✅ No new articles (all duplicates)")
-                if not kol_messages:
+                if not unique_kol:
+                    logger.info("✅ No new KOL messages either — nothing to send")
                     return 0
             else:
                 logger.info(f"✅ {len(unique_articles)} unique articles")
