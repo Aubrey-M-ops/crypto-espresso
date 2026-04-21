@@ -59,15 +59,20 @@ echo "    如果 sessions/ 目录已有 .session 文件可跳过，直接按 Ctr
 echo ""
 read -p "现在进行 Telethon 授权？[y/N] " do_auth
 if [[ "$do_auth" =~ ^[Yy]$ ]]; then
-    source "$INSTALL_DIR/.env"
-    sudo -u "$DEPLOY_USER" --preserve-env=TG_API_ID,TG_API_HASH \
-        "$INSTALL_DIR/venv/bin/python" - <<'EOF'
-import asyncio
+    sudo -u "$DEPLOY_USER" "$INSTALL_DIR/venv/bin/python" - "$INSTALL_DIR/.env" <<'EOF'
+import asyncio, sys
 from telethon import TelegramClient
-import os
 
-api_id = int(os.environ["TG_API_ID"])
-api_hash = os.environ["TG_API_HASH"]
+env = {}
+with open(sys.argv[1]) as f:
+    for line in f:
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip().strip('"').strip("'")
+
+api_id = int(env["TG_API_ID"])
+api_hash = env["TG_API_HASH"]
 session = "sessions/kol_monitor"
 
 async def auth():
