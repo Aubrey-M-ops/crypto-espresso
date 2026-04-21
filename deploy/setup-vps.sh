@@ -59,7 +59,8 @@ echo "    如果 sessions/ 目录已有 .session 文件可跳过，直接按 Ctr
 echo ""
 read -p "现在进行 Telethon 授权？[y/N] " do_auth
 if [[ "$do_auth" =~ ^[Yy]$ ]]; then
-    read -p "请输入手机号（含国家代码，如 +8613800138000）: " tg_phone
+    tg_phone=$(grep -E '^(export )?TELEGRAM_PHONE=' "$INSTALL_DIR/.env" | tail -1 | sed 's/.*=//;s/^"//;s/"$//;s/^'"'"'//;s/'"'"'$//')
+    echo "使用手机号: $tg_phone"
     TMP_AUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
     cat > "$TMP_AUTH" <<'PYEOF'
 import asyncio, sys, os
