@@ -2,6 +2,7 @@
 Description=Web3 News Push - 每天 08:00 和 17:00（加拿大东部时间）
 
 [Timer]
+Unit=web3-news-push@deploy.service
 # 加拿大东部时间（自动处理 EDT/EST 夏令时切换）
 # 如在温哥华用 America/Vancouver，卡尔加里用 America/Edmonton
 Timezone=America/Toronto
