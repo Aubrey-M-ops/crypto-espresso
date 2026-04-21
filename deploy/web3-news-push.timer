@@ -5,9 +5,8 @@ Description=Web3 News Push - 每天 08:00 和 17:00（加拿大东部时间）
 Unit=web3-news-push@deploy.service
 # 加拿大东部时间（自动处理 EDT/EST 夏令时切换）
 # 如在温哥华用 America/Vancouver，卡尔加里用 America/Edmonton
-Timezone=America/Toronto
-OnCalendar=*-*-* 08:00:00
-OnCalendar=*-*-* 17:00:00
+OnCalendar=*-*-* 12:00:00 UTC
+OnCalendar=*-*-* 21:00:00 UTC
 Persistent=true
 
 [Install]
