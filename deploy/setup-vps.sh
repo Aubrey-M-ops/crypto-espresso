@@ -69,7 +69,8 @@ with open(sys.argv[1]) as f:
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
-            env[k.strip()] = v.strip().strip('"').strip("'")
+            k = k.strip().removeprefix("export").strip()
+            env[k] = v.strip().strip('"').strip("'")
 
 api_id = int(env["TG_API_ID"])
 api_hash = env["TG_API_HASH"]
