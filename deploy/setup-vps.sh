@@ -62,6 +62,7 @@ if [[ "$do_auth" =~ ^[Yy]$ ]]; then
     tg_phone=$(grep -E '^(export )?TELEGRAM_PHONE=' "$INSTALL_DIR/.env" | tail -1 | sed 's/.*=//;s/^"//;s/"$//;s/^'"'"'//;s/'"'"'$//')
     echo "使用手机号: $tg_phone"
     TMP_AUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
+    chmod 644 "$TMP_AUTH"
     cat > "$TMP_AUTH" <<'PYEOF'
 import asyncio, sys, os
 from telethon import TelegramClient
