@@ -5,7 +5,7 @@ set -e
 
 DEPLOY_USER="${1:-deploy}"
 INSTALL_DIR="/opt/web3-news-push"
-REPO_URL="https://github.com/your-org/web3-news-push.git"  # ← 改成你的仓库地址
+REPO_URL="https://github.com/Aubrey-M-ops/crypto-espresso.git"
 
 echo "=== Web3 News Push VPS 初始化 ==="
 echo "安装目录: $INSTALL_DIR"
