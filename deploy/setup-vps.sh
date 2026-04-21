@@ -72,8 +72,8 @@ with open(sys.argv[1]) as f:
             k = k.strip().removeprefix("export").strip()
             env[k] = v.strip().strip('"').strip("'")
 
-api_id = int(env["TG_API_ID"])
-api_hash = env["TG_API_HASH"]
+api_id = int(env["TELEGRAM_API_ID"])
+api_hash = env["TELEGRAM_API_HASH"]
 session = "sessions/kol_monitor"
 
 async def auth():
