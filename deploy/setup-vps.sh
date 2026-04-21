@@ -59,8 +59,8 @@ echo "    如果 sessions/ 目录已有 .session 文件可跳过，直接按 Ctr
 echo ""
 read -p "现在进行 Telethon 授权？[y/N] " do_auth
 if [[ "$do_auth" =~ ^[Yy]$ ]]; then
-    sudo -u "$DEPLOY_USER" "$INSTALL_DIR/venv/bin/python" - "$INSTALL_DIR/.env" <<'EOF'
-import asyncio, sys
+    sudo -u "$DEPLOY_USER" "$INSTALL_DIR/venv/bin/python" - "$INSTALL_DIR/.env" "$INSTALL_DIR" <<'EOF'
+import asyncio, sys, os
 from telethon import TelegramClient
 
 env = {}
@@ -74,7 +74,9 @@ with open(sys.argv[1]) as f:
 
 api_id = int(env["TELEGRAM_API_ID"])
 api_hash = env["TELEGRAM_API_HASH"]
-session = "sessions/kol_monitor"
+install_dir = sys.argv[2]
+os.makedirs(os.path.join(install_dir, "sessions"), exist_ok=True)
+session = os.path.join(install_dir, "sessions", "kol_monitor")
 
 async def auth():
     client = TelegramClient(session, api_id, api_hash)
