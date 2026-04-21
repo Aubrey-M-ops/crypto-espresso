@@ -59,8 +59,9 @@ if crontab -l 2>/dev/null | grep -q "web3-news-push/run.sh"; then
 else
     echo "⚠️  Cron 未配置，正在安装..."
     chmod +x run.sh
+    # 加拿大东部时间 08:00/17:00（cron 跑本地时区，VPS 需先设 TZ=America/Toronto）
     (crontab -l 2>/dev/null; echo "0 8,17 * * * $PROJECT_DIR/run.sh") | crontab -
-    echo "✅ Cron 已安装（每天 08:00 和 17:00）"
+    echo "✅ Cron 已安装（每天 08:00 和 17:00，依赖系统时区）"
 fi
 echo ""
 

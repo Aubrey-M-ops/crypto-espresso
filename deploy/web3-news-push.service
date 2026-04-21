@@ -1,0 +1,12 @@
+[Unit]
+Description=Web3 News Push - Run once
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=%i
+WorkingDirectory=/opt/web3-news-push
+ExecStart=/opt/web3-news-push/run.sh
+StandardOutput=journal
+StandardError=journal

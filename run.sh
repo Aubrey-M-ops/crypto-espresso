@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_DIR="/Users/limohan/code_projects/web3/web3-news-push"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PYTHON="$PROJECT_DIR/venv/bin/python"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/cron_$(date +%Y%m%d).log"
