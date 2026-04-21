@@ -59,7 +59,9 @@ echo "    如果 sessions/ 目录已有 .session 文件可跳过，直接按 Ctr
 echo ""
 read -p "现在进行 Telethon 授权？[y/N] " do_auth
 if [[ "$do_auth" =~ ^[Yy]$ ]]; then
-    sudo -u "$DEPLOY_USER" "$INSTALL_DIR/venv/bin/python" - "$INSTALL_DIR/.env" "$INSTALL_DIR" <<'EOF'
+    read -p "请输入手机号（含国家代码，如 +8613800138000）: " tg_phone
+    TMP_AUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
+    cat > "$TMP_AUTH" <<'PYEOF'
 import asyncio, sys, os
 from telethon import TelegramClient
 
@@ -75,18 +77,21 @@ with open(sys.argv[1]) as f:
 api_id = int(env["TELEGRAM_API_ID"])
 api_hash = env["TELEGRAM_API_HASH"]
 install_dir = sys.argv[2]
+phone = sys.argv[3]
 os.makedirs(os.path.join(install_dir, "sessions"), exist_ok=True)
 session = os.path.join(install_dir, "sessions", "kol_monitor")
 
 async def auth():
     client = TelegramClient(session, api_id, api_hash)
-    await client.start()
+    await client.start(phone=phone)
     me = await client.get_me()
     print(f"登录成功: {me.first_name} (@{me.username})")
     await client.disconnect()
 
 asyncio.run(auth())
-EOF
+PYEOF
+    sudo -u "$DEPLOY_USER" "$INSTALL_DIR/venv/bin/python" "$TMP_AUTH" "$INSTALL_DIR/.env" "$INSTALL_DIR" "$tg_phone"
+    rm -f "$TMP_AUTH"
 fi
 
 # 7. 安装 systemd 单元
