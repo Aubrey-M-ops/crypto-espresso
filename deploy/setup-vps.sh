@@ -60,7 +60,8 @@ echo ""
 read -p "现在进行 Telethon 授权？[y/N] " do_auth
 if [[ "$do_auth" =~ ^[Yy]$ ]]; then
     source "$INSTALL_DIR/.env"
-    sudo -u "$DEPLOY_USER" "$INSTALL_DIR/venv/bin/python" - <<'EOF'
+    sudo -u "$DEPLOY_USER" --preserve-env=TG_API_ID,TG_API_HASH \
+        "$INSTALL_DIR/venv/bin/python" - <<'EOF'
 import asyncio
 from telethon import TelegramClient
 import os
