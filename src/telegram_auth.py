@@ -43,8 +43,8 @@ class TelegramAuth:
     caching to avoid repeated logins.
     """
     
-    # Default session storage directory
-    SESSION_DIR = Path("./sessions")
+    # Default session storage directory (absolute path based on project root)
+    SESSION_DIR = Path(__file__).parent.parent / "sessions"
     SESSION_FILE = "telegram.session"
     
     def __init__(

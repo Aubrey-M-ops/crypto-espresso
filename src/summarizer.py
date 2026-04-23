@@ -109,7 +109,7 @@ class SummarizerClient:
             timeout=self.REQUEST_TIMEOUT,
             max_retries=0,
         )
-        self.model = "claude-sonnet-4-5"
+        self.model = "claude-sonnet-4-6"
         logger.info(
             f"Initialized SummarizerClient with model: {self.model} "
             f"(timeout: {self.REQUEST_TIMEOUT}s)"
