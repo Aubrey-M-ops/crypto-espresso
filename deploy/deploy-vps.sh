@@ -1,6 +1,6 @@
 #!/bin/bash
 # 本地运行：将最新代码推送到 VPS 并重启服务
-# 用法：./deploy/deploy-update.sh [vps_host] [vps_user] [install_dir]
+# 用法：./deploy/deploy-vps.sh [vps_host] [vps_user] [install_dir]
 #
 # 示例：
 #   ./deploy/deploy-update.sh 1.2.3.4
