@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class SummaryResult:
     """Structured summary output from Claude API."""
     plain_summary: str
-    terms: list[tuple[str, str]]  # [(term, explanation), ...]
+    terms: list[tuple[str, str, str]]  # [(term_en, term_cn, explanation), ...]
     category: str
     thinking_question: str
     beginner_score: int
@@ -576,14 +576,20 @@ class SummarizerClient:
                 plain_summary += "\n" + line
 
             elif current_section == "terms" and line.startswith("-"):
-                # Parse term line: "- Term = explanation"
+                # Parse term line: "- EN Term | CN Term = explanation"
+                # Falls back to legacy "- Term = explanation" if no "|" present
                 term_line = line.lstrip("- ").strip()
-                if " = " in term_line:
-                    term, explanation = term_line.split(" = ", 1)
-                    terms.append((term.strip(), explanation.strip()))
-                elif "=" in term_line:
-                    term, explanation = term_line.split("=", 1)
-                    terms.append((term.strip(), explanation.strip()))
+                sep = " = " if " = " in term_line else ("=" if "=" in term_line else None)
+                if sep:
+                    term_part, explanation = term_line.split(sep, 1)
+                    term_part = term_part.strip()
+                    if " | " in term_part:
+                        term_en, term_cn = term_part.split(" | ", 1)
+                    else:
+                        # Legacy single-term: auto-assign to EN or CN slot
+                        has_cjk = any('一' <= c <= '鿿' for c in term_part)
+                        term_en, term_cn = ("", term_part) if has_cjk else (term_part, "")
+                    terms.append((term_en.strip(), term_cn.strip(), explanation.strip()))
         
         # Validation
         if not plain_summary:
@@ -621,8 +627,9 @@ class SummarizerClient:
         
         if result.terms:
             output.append("\n📖 术语高亮：")
-            for term, explanation in result.terms:
-                output.append(f"  - {term} = {explanation}")
+            for term_en, term_cn, explanation in result.terms:
+                label = f"{term_en} / {term_cn}" if term_en and term_cn else (term_en or term_cn)
+                output.append(f"  - {label} = {explanation}")
         
         output.append(f"\n🏷️ 分类标签：{result.category}")
         output.append(f"\n💡 延伸一问：{result.thinking_question}")

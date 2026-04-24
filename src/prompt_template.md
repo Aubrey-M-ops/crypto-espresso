@@ -10,9 +10,9 @@ Output ONLY the following structured format. Do not add any text before or after
 📰 大白话总结：[3-5句话段落：发生了什么事、为什么重要、读者需要知道什么。使用零技术术语，用日常口语表达。]
 
 📖 术语高亮：
-  - [Term 1] = [10-word max plain explanation]
-  - [Term 2] = [10-word max plain explanation]
-  (Include 2-4 terms maximum, only if they appear in the article)
+  - [英文术语] | [中文术语] = [10字以内通俗解释]
+  - [英文术语] | [中文术语] = [10字以内通俗解释]
+  (Include 2-4 terms maximum, only if they appear in the article; if a term has no English equivalent write the Chinese name in both slots)
 
 🏷️ 分类标签：[SELECT EXACTLY ONE: #监管 | #比特币 | #以太坊 | #DeFi | #新项目 | #宏观经济]
 
