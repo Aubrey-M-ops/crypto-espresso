@@ -21,7 +21,8 @@ from dedup import ArticleDeduplicator
 from summarizer import SummarizerClient
 from classifier import classify_articles
 from digest import build_digest, format_empty_digest
-from monitor import send_alert
+from monitor import send_alert, step_timer
+from supabase_client import save_terms
 
 # Load environment variables
 try:
@@ -155,7 +156,8 @@ def main():
     try:
         # Step 1: Scrape articles
         logger.info("📰 Step 1/6: Scraping news sources...")
-        all_articles = [] if args.kol_only else scrape_all_sources()
+        with step_timer("Step 1/6: 新闻抓取", threshold_sec=60):
+            all_articles = [] if args.kol_only else scrape_all_sources()
 
         # Step 1b: Scrape Telegram KOL channels (kept separate from RSS articles)
         kol_messages = []
@@ -166,7 +168,8 @@ def main():
                 from telegram_filter import filter_crypto_messages
 
                 logger.info("   📱 Scraping Telegram KOL sources...")
-                telegram_msgs = asyncio.run(scrape_telegram_sources())
+                with step_timer("Step 1b/6: KOL 频道抓取", threshold_sec=60):
+                    telegram_msgs = asyncio.run(scrape_telegram_sources())
                 kol_messages = filter_crypto_messages(telegram_msgs)
                 logger.info(f"   ✅ Got {len(kol_messages)} KOL messages after filtering")
             except Exception as e:
@@ -219,51 +222,62 @@ def main():
         # Step 3: Summarize with AI
         logger.info(f"🤖 Step 3/6: Generating AI summaries ({len(articles_to_process)} articles)...")
         summarizer = SummarizerClient(api_key=anthropic_api_key)
+        _summarize_threshold = 60 + 30 * max(len(articles_to_process), 1)
 
-        # Step 3b: AI-interpret KOL messages in beginner-friendly Chinese
-        if unique_kol:
-            logger.info(f"   📱 Generating KOL interpretations ({len(unique_kol)} messages)...")
-            interpreted_kol = []
-            for kol_msg in unique_kol:
-                source = kol_msg.get("source", "")
-                channel = source.split("/")[-1] if "/" in source else source
-                content = kol_msg.get("content", "").strip()
-                # Skip AI interpretation for image-only / link-only posts (too short to summarize)
-                if len(content) < 30:
-                    logger.info(f"   ⏭️ Skipping KOL @{channel} (content too short, using raw preview)")
+        with step_timer("Step 3/6: AI 摘要", threshold_sec=_summarize_threshold):
+            # Step 3b: AI-interpret KOL messages in beginner-friendly Chinese
+            if unique_kol:
+                logger.info(f"   📱 Generating KOL interpretations ({len(unique_kol)} messages)...")
+                interpreted_kol = []
+                for kol_msg in unique_kol:
+                    source = kol_msg.get("source", "")
+                    channel = source.split("/")[-1] if "/" in source else source
+                    content = kol_msg.get("content", "").strip()
+                    # Skip AI interpretation for image-only / link-only posts (too short to summarize)
+                    if len(content) < 30:
+                        logger.info(f"   ⏭️ Skipping KOL @{channel} (content too short, using raw preview)")
+                        interpreted_kol.append(kol_msg)
+                        continue
+                    try:
+                        kol_result = summarizer.summarize_kol(channel=channel, content=content)
+                        kol_msg = dict(kol_msg)
+                        kol_msg["kol_summary"] = summarizer.format_kol_summary(kol_result)
+                    except Exception as e:
+                        logger.warning(f"   ⚠️ Failed to interpret KOL @{channel}: {e}")
                     interpreted_kol.append(kol_msg)
-                    continue
+                unique_kol = interpreted_kol
+                logger.info(f"   ✅ KOL interpretations done")
+
+            summarized_articles = []
+            for i, article in enumerate(articles_to_process, 1):
                 try:
-                    kol_result = summarizer.summarize_kol(channel=channel, content=content)
-                    kol_msg = dict(kol_msg)
-                    kol_msg["kol_summary"] = summarizer.format_kol_summary(kol_result)
+                    logger.info(f"   Processing {i}/{len(articles_to_process)}: {article['title'][:50]}...")
+
+                    result = summarizer.summarize(
+                        title=article['title'],
+                        url=article['url'],
+                        content=article['content']
+                    )
+
+                    summarized_articles.append({
+                        'title': article['title'],
+                        'url': article['url'],
+                        'summary': summarizer.format_summary(result),
+                        'beginner_score': result.beginner_score
+                    })
+
+                    if result.terms and os.getenv('SUPABASE_URL'):
+                        save_terms(
+                            terms=result.terms,
+                            article_url=article['url'],
+                            article_title=article['title'],
+                            category=result.category,
+                            pub_date=datetime.now().strftime("%Y-%m-%d"),
+                        )
+
                 except Exception as e:
-                    logger.warning(f"   ⚠️ Failed to interpret KOL @{channel}: {e}")
-                interpreted_kol.append(kol_msg)
-            unique_kol = interpreted_kol
-            logger.info(f"   ✅ KOL interpretations done")
-        
-        summarized_articles = []
-        for i, article in enumerate(articles_to_process, 1):
-            try:
-                logger.info(f"   Processing {i}/{len(articles_to_process)}: {article['title'][:50]}...")
-                
-                result = summarizer.summarize(
-                    title=article['title'],
-                    url=article['url'],
-                    content=article['content']
-                )
-                
-                summarized_articles.append({
-                    'title': article['title'],
-                    'url': article['url'],
-                    'summary': summarizer.format_summary(result),
-                    'beginner_score': result.beginner_score
-                })
-                
-            except Exception as e:
-                logger.error(f"   ❌ Failed to summarize article {i}: {e}")
-                continue
+                    logger.error(f"   ❌ Failed to summarize article {i}: {e}")
+                    continue
         
         if not summarized_articles and not args.kol_only:
             logger.error("❌ No articles successfully summarized")
@@ -285,15 +299,16 @@ def main():
         
         # Step 6: Send to Telegram
         logger.info("📤 Step 6/6: Sending to Telegram...")
-        for i, message in enumerate(messages, 1):
-            success = send_telegram(telegram_channel_id, message, dry_run=args.dry_run)
-            if not success and not args.dry_run:
-                logger.error(f"❌ Failed to send message {i}/{len(messages)}")
-                send_alert(
-                    f"Step 6/6: Telegram 推送",
-                    f"第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_channel_id}",
-                )
-                return 1
+        with step_timer("Step 6/6: Telegram 推送", threshold_sec=30):
+            for i, message in enumerate(messages, 1):
+                success = send_telegram(telegram_channel_id, message, dry_run=args.dry_run)
+                if not success and not args.dry_run:
+                    logger.error(f"❌ Failed to send message {i}/{len(messages)}")
+                    send_alert(
+                        f"Step 6/6: Telegram 推送",
+                        f"第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_channel_id}",
+                    )
+                    return 1
         
         logger.info("🎉 Web3 News Push completed successfully!")
         return 0
