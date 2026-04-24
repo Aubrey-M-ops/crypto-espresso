@@ -70,7 +70,7 @@ async def main():
     print(f"\n📁 文件夹 slug: {slug}")
     print("🔐 正在连接 Telegram（首次需要输入验证码）...\n")
 
-    auth = TelegramAuth()
+    auth = TelegramAuth(interactive=True)
     try:
         client = await auth.get_client()
     except Exception as e:

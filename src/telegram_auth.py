@@ -52,7 +52,8 @@ class TelegramAuth:
         api_id: Optional[int] = None,
         api_hash: Optional[str] = None,
         phone: Optional[str] = None,
-        session_path: Optional[Path] = None
+        session_path: Optional[Path] = None,
+        interactive: bool = False
     ):
         """
         Initialize Telegram authentication manager.
@@ -105,8 +106,9 @@ class TelegramAuth:
         # Ensure session directory exists
         self.session_path.parent.mkdir(parents=True, exist_ok=True)
         
+        self.interactive = interactive
         self._client: Optional[TelegramClient] = None
-        
+
         logger.info(
             f"Initialized TelegramAuth for {self.phone} "
             f"(session: {self.session_path})"
@@ -158,8 +160,15 @@ class TelegramAuth:
                 logger.info("✅ Already authorized (using existing session)")
                 self._client = client
                 return client
-            
-            # Not authorized - perform phone authentication
+
+            # Not authorized - only attempt interactive login if explicitly enabled
+            if not self.interactive:
+                raise TelegramAuthError(
+                    "No valid Telegram session found. "
+                    "Run 'python src/setup_kol.py' interactively on the server to authenticate, "
+                    "or copy a valid session file to the sessions/ directory."
+                )
+
             logger.info(f"Not authorized. Starting phone authentication for {self.phone}")
             await self._perform_login(client)
             
@@ -366,7 +375,7 @@ if __name__ == "__main__":
         
         try:
             # Initialize auth manager
-            auth = TelegramAuth()
+            auth = TelegramAuth(interactive=True)
             
             # Get authenticated client
             client = await auth.get_client()
