@@ -21,6 +21,7 @@ from dedup import ArticleDeduplicator
 from summarizer import SummarizerClient
 from classifier import classify_articles
 from digest import build_digest, format_empty_digest
+from monitor import send_alert
 
 # Load environment variables
 try:
@@ -142,6 +143,7 @@ def main():
     
     if not anthropic_api_key:
         logger.error("❌ ANTHROPIC_API_KEY not set in environment")
+        send_alert("启动检查", "ANTHROPIC_API_KEY 未配置，pipeline 中止")
         return 1
     
     logger.info("🚀 Starting Web3 News Push...")
@@ -265,6 +267,7 @@ def main():
         
         if not summarized_articles and not args.kol_only:
             logger.error("❌ No articles successfully summarized")
+            send_alert("Step 3/6: AI 摘要", "所有文章摘要均失败，未发送 digest")
             return 1
 
         logger.info(f"✅ Summarized {len(summarized_articles)} articles")
@@ -286,6 +289,10 @@ def main():
             success = send_telegram(telegram_channel_id, message, dry_run=args.dry_run)
             if not success and not args.dry_run:
                 logger.error(f"❌ Failed to send message {i}/{len(messages)}")
+                send_alert(
+                    f"Step 6/6: Telegram 推送",
+                    f"第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_channel_id}",
+                )
                 return 1
         
         logger.info("🎉 Web3 News Push completed successfully!")
@@ -296,6 +303,7 @@ def main():
         return 130
     except Exception as e:
         logger.error(f"❌ Fatal error: {e}", exc_info=True)
+        send_alert("Pipeline 崩溃", f"未捕获异常: {e}", exc=e)
         return 1
 
 
