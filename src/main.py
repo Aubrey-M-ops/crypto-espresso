@@ -305,9 +305,7 @@ def main():
         # Step 5: Build digest
         logger.info("📝 Step 5/6: Building digest...")
         today = datetime.now().strftime("%Y-%m-%d")
-        # News digest goes to news channel only (no KOL content)
-        messages = build_digest(classified, date=today)
-        # KOL digest goes to dedicated KOL channel
+        messages = build_digest(classified, date=today) if not args.kol_only else []
         kol_messages_out = build_kol_digest(unique_kol, date=today) if unique_kol else []
         logger.info(f"✅ News: {len(messages)} message(s), KOL: {len(kol_messages_out)} message(s)")
 
@@ -326,18 +324,19 @@ def main():
                         )
                         return 1
 
-            # Send KOL digest → KOL channel
+            # Send KOL digest → KOL channel only
             if kol_messages_out:
-                kol_target = telegram_kol_channel_id or telegram_news_channel_id
                 if not telegram_kol_channel_id:
-                    logger.warning("⚠️ TELEGRAM_KOL_CHANNEL_ID not set, sending KOL to news channel")
+                    logger.error("❌ TELEGRAM_KOL_CHANNEL_ID not configured")
+                    send_alert("Step 6/6: Telegram 推送", "TELEGRAM_KOL_CHANNEL_ID 未配置，KOL digest 未发送")
+                    return 1
                 for i, message in enumerate(kol_messages_out, 1):
-                    success = send_telegram(kol_target, message, dry_run=args.dry_run)
+                    success = send_telegram(telegram_kol_channel_id, message, dry_run=args.dry_run)
                     if not success and not args.dry_run:
                         logger.error(f"❌ Failed to send KOL message {i}/{len(kol_messages_out)}")
                         send_alert(
                             "Step 6/6: Telegram 推送",
-                            f"KOL 频道第 {i}/{len(kol_messages_out)} 条消息发送失败，频道 {kol_target}",
+                            f"KOL 频道第 {i}/{len(kol_messages_out)} 条消息发送失败，频道 {telegram_kol_channel_id}",
                         )
                         return 1
         
