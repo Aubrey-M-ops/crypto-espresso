@@ -127,6 +127,11 @@ def main():
         help='Only scrape and send KOL messages, skip news articles'
     )
     parser.add_argument(
+        '--news-only',
+        action='store_true',
+        help='Only scrape and send news articles, skip KOL messages'
+    )
+    parser.add_argument(
         '--no-dedup',
         action='store_true',
         help='Skip deduplication (send all scraped content regardless of seen history)'
@@ -152,6 +157,7 @@ def main():
     logger.info(f"📊 Max articles: {max_articles}")
     logger.info(f"🔍 Dry run: {args.dry_run}")
     logger.info(f"📱 KOL only: {args.kol_only}")
+    logger.info(f"📰 News only: {args.news_only}")
     logger.info(f"🔄 No dedup: {args.no_dedup}")
     
     try:
@@ -162,7 +168,7 @@ def main():
 
         # Step 1b: Scrape Telegram KOL channels (kept separate from RSS articles)
         kol_messages = []
-        if os.getenv('TELEGRAM_API_ID') and os.getenv('TELEGRAM_PHONE'):
+        if not args.news_only and os.getenv('TELEGRAM_API_ID') and os.getenv('TELEGRAM_PHONE'):
             try:
                 import asyncio
                 from telegram_scraper import scrape_telegram_sources

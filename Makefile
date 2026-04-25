@@ -4,8 +4,8 @@ INSTALL_DIR ?= $(shell grep -E '^INSTALL_DIR=' .env.deploy 2>/dev/null | cut -d=
 SSH         := ssh $(VPS_USER)@$(VPS_HOST)
 
 .PHONY: help \
-        install test test-monitor dry-run \
-        deploy setup auth run logs status restart stop
+        install test test-monitor dry-run dry-run-kol dry-run-news \
+        deploy setup auth run run-kol run-news logs status restart stop
 
 # ─────────────────────────────────────────────
 # 帮助
@@ -17,12 +17,16 @@ help:
 	@echo "  make test           运行本地测试"
 	@echo "  make test-monitor   测试告警模块是否能送达 Telegram"
 	@echo "  make dry-run        本地跑一遍 pipeline，打印 digest，不发送"
+	@echo "  make dry-run-kol    本地只跑 KOL pipeline，打印 digest，不发送"
+	@echo "  make dry-run-news   本地只跑 news pipeline，打印 digest，不发送"
 	@echo ""
 	@echo "VPS 远程命令（需要 .env.deploy 配置 VPS_HOST / VPS_USER）"
 	@echo "  make deploy         推送代码更新到 VPS 并重启"
 	@echo "  make setup          VPS 一次性初始化（首次部署）"
 	@echo "  make auth           VPS 上执行 Telegram 首次授权"
 	@echo "  make run            VPS 立即触发一次推送"
+	@echo "  make run-kol        VPS 只触发 KOL pipeline"
+	@echo "  make run-news       VPS 只触发 news pipeline"
 	@echo "  make logs           实时查看 VPS 服务日志"
 	@echo "  make status         VPS 定时器 + 最近执行状态"
 	@echo "  make restart        重启 VPS systemd 定时器"
@@ -45,6 +49,12 @@ test-monitor:
 dry-run:
 	venv/bin/python src/main.py --dry-run
 
+dry-run-kol:
+	venv/bin/python src/main.py --dry-run --kol-only
+
+dry-run-news:
+	venv/bin/python src/main.py --dry-run --news-only
+
 # ─────────────────────────────────────────────
 # VPS 远程操作
 # ─────────────────────────────────────────────
@@ -61,6 +71,12 @@ auth:
 
 run:
 	$(SSH) "systemctl start web3-news-push@$(VPS_USER)"
+
+run-kol:
+	$(SSH) "cd $(INSTALL_DIR) && venv/bin/python src/main.py --kol-only"
+
+run-news:
+	$(SSH) "cd $(INSTALL_DIR) && venv/bin/python src/main.py --news-only"
 
 logs:
 	$(SSH) "journalctl -u 'web3-news-push@*' -f"
