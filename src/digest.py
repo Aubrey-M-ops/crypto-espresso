@@ -278,6 +278,47 @@ def _split_section(header: str, section_title: str, articles: List[Article]) -> 
     return messages
 
 
+def build_kol_digest(kol_messages: List[Dict], date: str = None) -> List[str]:
+    """
+    Build a standalone KOL digest for the dedicated KOL channel.
+
+    Args:
+        kol_messages: List of KOL message dicts (with optional kol_summary)
+        date: Date string (YYYY-MM-DD), defaults to today
+
+    Returns:
+        List of message strings (1 if fits, 2+ if split needed)
+    """
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    if not kol_messages:
+        return [f"🐦 今日 KOL 观点 | {date}\n\n暂无新 KOL 消息。"]
+
+    header = f"🐦 今日 KOL 观点 | {date}\n"
+    continuation_header = f"🐦 今日 KOL 观点 | {date} (续)\n"
+
+    chunks = []
+    current = header
+
+    for i, msg in enumerate(kol_messages, 1):
+        msg_text = format_kol_message(msg, i)
+        separator = f"\n{SEPARATOR}\n" if i > 1 else "\n"
+        candidate = current + separator + msg_text + "\n"
+
+        if len(candidate) <= TELEGRAM_MAX_LENGTH:
+            current = candidate
+        else:
+            if current.strip():
+                chunks.append(current.strip())
+            current = f"{continuation_header}\n{msg_text}\n"
+
+    if current.strip():
+        chunks.append(current.strip())
+
+    return chunks if chunks else [header.strip()]
+
+
 def format_empty_digest(date: str = None) -> str:
     """
     Format message when no articles are available.

@@ -20,7 +20,7 @@ from scraper import scrape_all_sources
 from dedup import ArticleDeduplicator
 from summarizer import SummarizerClient
 from classifier import classify_articles
-from digest import build_digest, format_empty_digest
+from digest import build_digest, build_kol_digest, format_empty_digest
 from monitor import send_alert, step_timer
 from supabase_client import save_terms
 
@@ -60,7 +60,7 @@ def send_telegram(channel_id: str, message: str, dry_run: bool = False) -> bool:
         return True
 
     if not channel_id:
-        logger.error("TELEGRAM_CHANNEL_ID not configured")
+        logger.error("TELEGRAM_NEWS_CHANNEL_ID not configured")
         return False
 
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -138,7 +138,8 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
     
     # Load config
-    telegram_channel_id = os.getenv('TELEGRAM_CHANNEL_ID', '')
+    telegram_news_channel_id = os.getenv('TELEGRAM_NEWS_CHANNEL_ID', '')
+    telegram_kol_channel_id = os.getenv('TELEGRAM_KOL_CHANNEL_ID', '')
     anthropic_api_key = os.getenv('ANTHROPIC_API_KEY', '')
     max_articles = args.max_articles or int(os.getenv('MAX_ARTICLES', '10'))
     
@@ -177,9 +178,9 @@ def main():
         
         if not all_articles and not args.kol_only:
             logger.warning("⚠️ No articles found")
-            if not args.dry_run and telegram_channel_id:
+            if not args.dry_run and telegram_news_channel_id:
                 send_telegram(
-                    telegram_channel_id,
+                    telegram_news_channel_id,
                     format_empty_digest(),
                     dry_run=args.dry_run
                 )
@@ -294,21 +295,40 @@ def main():
         # Step 5: Build digest
         logger.info("📝 Step 5/6: Building digest...")
         today = datetime.now().strftime("%Y-%m-%d")
-        messages = build_digest(classified, date=today, kol_messages=unique_kol)
-        logger.info(f"✅ Generated {len(messages)} message(s)")
-        
+        # News digest goes to news channel only (no KOL content)
+        messages = build_digest(classified, date=today)
+        # KOL digest goes to dedicated KOL channel
+        kol_messages_out = build_kol_digest(unique_kol, date=today) if unique_kol else []
+        logger.info(f"✅ News: {len(messages)} message(s), KOL: {len(kol_messages_out)} message(s)")
+
         # Step 6: Send to Telegram
         logger.info("📤 Step 6/6: Sending to Telegram...")
         with step_timer("Step 6/6: Telegram 推送", threshold_sec=30):
+            # Send news digest → news channel
             for i, message in enumerate(messages, 1):
-                success = send_telegram(telegram_channel_id, message, dry_run=args.dry_run)
+                success = send_telegram(telegram_news_channel_id, message, dry_run=args.dry_run)
                 if not success and not args.dry_run:
-                    logger.error(f"❌ Failed to send message {i}/{len(messages)}")
+                    logger.error(f"❌ Failed to send news message {i}/{len(messages)}")
                     send_alert(
-                        f"Step 6/6: Telegram 推送",
-                        f"第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_channel_id}",
+                        "Step 6/6: Telegram 推送",
+                        f"新闻频道第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_news_channel_id}",
                     )
                     return 1
+
+            # Send KOL digest → KOL channel
+            if kol_messages_out:
+                kol_target = telegram_kol_channel_id or telegram_news_channel_id
+                if not telegram_kol_channel_id:
+                    logger.warning("⚠️ TELEGRAM_KOL_CHANNEL_ID not set, sending KOL to news channel")
+                for i, message in enumerate(kol_messages_out, 1):
+                    success = send_telegram(kol_target, message, dry_run=args.dry_run)
+                    if not success and not args.dry_run:
+                        logger.error(f"❌ Failed to send KOL message {i}/{len(kol_messages_out)}")
+                        send_alert(
+                            "Step 6/6: Telegram 推送",
+                            f"KOL 频道第 {i}/{len(kol_messages_out)} 条消息发送失败，频道 {kol_target}",
+                        )
+                        return 1
         
         logger.info("🎉 Web3 News Push completed successfully!")
         return 0
