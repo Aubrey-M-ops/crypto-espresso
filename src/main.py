@@ -182,6 +182,10 @@ def main():
             except Exception as e:
                 logger.warning(f"   ⚠️ Telegram KOL scraping failed: {e}")
         
+        if args.kol_only and not kol_messages:
+            logger.info("✅ No KOL messages to send — nothing to do")
+            return 0
+
         if not all_articles and not args.kol_only:
             logger.warning("⚠️ No articles found")
             if not args.dry_run and telegram_news_channel_id:
@@ -310,16 +314,17 @@ def main():
         # Step 6: Send to Telegram
         logger.info("📤 Step 6/6: Sending to Telegram...")
         with step_timer("Step 6/6: Telegram 推送", threshold_sec=30):
-            # Send news digest → news channel
-            for i, message in enumerate(messages, 1):
-                success = send_telegram(telegram_news_channel_id, message, dry_run=args.dry_run)
-                if not success and not args.dry_run:
-                    logger.error(f"❌ Failed to send news message {i}/{len(messages)}")
-                    send_alert(
-                        "Step 6/6: Telegram 推送",
-                        f"新闻频道第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_news_channel_id}",
-                    )
-                    return 1
+            # Send news digest → news channel (skip in --kol-only mode)
+            if not args.kol_only:
+                for i, message in enumerate(messages, 1):
+                    success = send_telegram(telegram_news_channel_id, message, dry_run=args.dry_run)
+                    if not success and not args.dry_run:
+                        logger.error(f"❌ Failed to send news message {i}/{len(messages)}")
+                        send_alert(
+                            "Step 6/6: Telegram 推送",
+                            f"新闻频道第 {i}/{len(messages)} 条消息发送失败，频道 {telegram_news_channel_id}",
+                        )
+                        return 1
 
             # Send KOL digest → KOL channel
             if kol_messages_out:
