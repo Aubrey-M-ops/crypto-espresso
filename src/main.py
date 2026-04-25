@@ -136,7 +136,18 @@ def main():
         action='store_true',
         help='Skip deduplication (send all scraped content regardless of seen history)'
     )
-    
+    parser.add_argument(
+        '--test',
+        action='store_true',
+        help='Send a test message to channel(s) without running the pipeline'
+    )
+    parser.add_argument(
+        '--channel',
+        choices=['news', 'kol', 'all'],
+        default='all',
+        help='Which channel to test: news, kol, or all (default: all)'
+    )
+
     args = parser.parse_args()
     
     if args.verbose:
@@ -153,13 +164,31 @@ def main():
         send_alert("启动检查", "ANTHROPIC_API_KEY 未配置，pipeline 中止")
         return 1
     
+    # --test mode: send a test message and exit
+    if args.test:
+        test_message = (
+            "🧪 *测试消息*\n\n"
+            "这是一条测试消息，用于验证 Telegram Bot 推送是否正常。\n\n"
+            f"发送时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        send_news = args.channel in ('news', 'all')
+        send_kol = args.channel in ('kol', 'all')
+        ok = True
+        if send_news:
+            logger.info(f"📤 Sending test message to news channel ({telegram_news_channel_id})...")
+            ok = send_telegram(telegram_news_channel_id, test_message, dry_run=args.dry_run) and ok
+        if send_kol:
+            logger.info(f"📤 Sending test message to KOL channel ({telegram_kol_channel_id})...")
+            ok = send_telegram(telegram_kol_channel_id, test_message, dry_run=args.dry_run) and ok
+        return 0 if ok else 1
+
     logger.info("🚀 Starting Web3 News Push...")
     logger.info(f"📊 Max articles: {max_articles}")
     logger.info(f"🔍 Dry run: {args.dry_run}")
     logger.info(f"📱 KOL only: {args.kol_only}")
     logger.info(f"📰 News only: {args.news_only}")
     logger.info(f"🔄 No dedup: {args.no_dedup}")
-    
+
     try:
         # Step 1: Scrape articles
         logger.info("📰 Step 1/6: Scraping news sources...")
