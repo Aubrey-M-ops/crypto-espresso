@@ -2,97 +2,165 @@
 
 # web3-news-push
 
-[**➜ 订阅频道：t.me/morningm_news**](https://t.me/morningm_news)
+<div align="right">
+  <a href="README.zh.md">中文</a>
+</div>
 
-本项目是 Telegram 频道 [@morningm_news](https://t.me/morningm_news) 的开源推送源码。每天 08:00 和 17:00 自动抓取主流加密货币新闻，用我这种丈育也能看懂的语言总结，适合地铁看手机的时候汲取碎片信息。
+> **Subscribe:** [t.me/morningm_news](https://t.me/morningm_news)
 
----
-
-## 功能
-
-| 功能 | 状态 |
-|------|------|
-| RSS 新闻抓取（CoinDesk / CoinTelegraph / Decrypt） | ✅ |
-| AI 中文摘要生成（Claude Sonnet） | ✅ |
-| 智能分类（必读 / 进阶） | ✅ |
-| Telegram 自动推送 | ✅ |
-| 去重机制（7 天哈希窗口） | ✅ |
-| 每日 08:00 + 17:00 定时推送 | ✅ |
-| Telegram KOL 频道抓取 | ✅ |
+Open-source backend for the Telegram channel [@morningm_news](https://t.me/morningm_news). Twice a day it scrapes the top crypto news, summarises everything in plain language with Claude AI, and pushes a digest to Telegram — so you can stay informed during your morning commute.
 
 ---
 
-## 快速开始（自部署）
+## Features
 
-### 1. 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. 配置环境变量
-
-```bash
-cp .env.example .env
-# 编辑 .env，填入 ANTHROPIC_API_KEY、TELEGRAM_BOT_TOKEN、TELEGRAM_CHANNEL_ID
-```
-
-### 3. 测试运行
-
-```bash
-python src/main.py --dry-run
-```
-
-### 4. 安装定时任务
-
-```bash
-chmod +x run.sh
-(crontab -l 2>/dev/null; echo "0 8,17 * * * $(pwd)/run.sh") | crontab -
-```
-
-详细步骤见 [docs/DEPLOY.md](docs/DEPLOY.md)。
+| Feature | Status |
+|---------|--------|
+| RSS scraping — CoinTelegraph, Decrypt, The Block | ✅ |
+| AI summaries in plain Chinese (Claude Sonnet) | ✅ |
+| Smart classification — Must-Read vs Advanced | ✅ |
+| Automatic Telegram push | ✅ |
+| 7-day hash deduplication | ✅ |
+| Scheduled at 08:00 & 17:00 daily | ✅ |
+| Telegram KOL channel scraping | ✅ |
 
 ---
 
-## 输出示例
+## Sample Output
 
 ```
-🌅 今日加密货币新闻 | 2026-04-14
+🌅 Crypto News Digest | 2026-04-25
 
-🟢 必读
+🟢 Must-Read
 
-📰 大白话总结：比特币价格突破10万美元，创历史新高
+📰 Plain summary: Bitcoin breaks $100K for the first time, setting a new ATH.
 
-📖 术语高亮：
-  - ATH = All-Time High，历史最高价
+📖 Terms:
+  - ATH = All-Time High, the highest price ever recorded
 
-🏷️ #比特币
+🏷️ #Bitcoin
 
-💡 延伸一问：如果比特币继续上涨，传统金融机构会如何应对？
+💡 Think about it: If Bitcoin keeps rising, how will traditional banks respond?
 
 ─────────────────
 
-🔵 进阶
+🔵 Advanced
 
-[技术深度文章...]
+[In-depth technical articles...]
 ```
 
 ---
 
-## 技术栈
+## Self-Hosting
 
-- **Python 3.10+**
-- **feedparser** — RSS 解析
-- **httpx** — HTTP 请求
-- **anthropic** — Claude API
-- **telethon** — Telegram KOL 抓取
-- **SQLite** — 本地去重存储
-- **cron** — 定时调度
+### 1. Install dependencies
 
+```bash
+make install
+```
 
-## 文档
+### 2. Configure secrets
 
-- [部署指南](docs/DEPLOY.md)
-- [技术设计](docs/project-design.md)
-- [Telegram 配置](docs/telegram-setup.md)
+```bash
+cp .env.example .env
+```
 
+Fill in `.env`:
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Claude API key |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `TELEGRAM_NEWS_CHANNEL_ID` | News channel ID |
+| `TELEGRAM_KOL_CHANNEL_ID` | KOL channel ID |
+| `TELEGRAM_API_ID` | Telegram API ID (KOL scraping) |
+| `TELEGRAM_PHONE` | Phone number (KOL scraping) |
+
+### 3. Test locally (no send)
+
+```bash
+make dry-run        # full pipeline, print only
+make dry-run-news   # news channel only
+make dry-run-kol    # KOL channel only
+```
+
+### 4. Test Telegram push
+
+```bash
+make test-send        # send test message to both channels
+make test-send-news   # news channel only
+make test-send-kol    # KOL channel only
+```
+
+### 5. Deploy to VPS
+
+```bash
+# One-time setup
+make setup
+
+# Push code and restart
+make deploy
+```
+
+See [docs/DEPLOY.md](docs/DEPLOY.md) for the full VPS guide.
+
+---
+
+## Make Commands
+
+```
+── Local dev ──────────────────────────────────────
+  install          Install Python dependencies (venv)
+  test             Run unit tests
+  test-monitor     Test alert module → real Telegram send
+
+── Preview (no send) ──────────────────────────────
+  dry-run          Full pipeline, print digest, no push
+  dry-run-kol      KOL pipeline only, no push
+  dry-run-news     News pipeline only, no push
+
+── Push tests (real send) ─────────────────────────
+  test-send        Send test message → both channels
+  test-send-news   Send test message → news channel
+  test-send-kol    Send test message → KOL channel
+
+── VPS remote ─────────────────────────────────────
+  deploy           Push code to VPS and restart
+  setup            One-time VPS initialization
+  auth             Telegram first-time auth on VPS
+  run              Trigger a full push on VPS now
+  run-kol          Trigger KOL pipeline on VPS
+  run-news         Trigger news pipeline on VPS
+  logs             Stream VPS service logs
+  status           VPS timer + recent run status
+  restart          Restart VPS systemd timer
+  stop             Stop VPS timer (keep installed)
+```
+
+---
+
+## Tech Stack
+
+| Layer | Library |
+|-------|---------|
+| Language | Python 3.10+ |
+| RSS parsing | feedparser |
+| HTTP | httpx |
+| AI summaries | anthropic (Claude Sonnet) |
+| KOL scraping | telethon |
+| Deduplication | SQLite |
+| Scheduling | cron / systemd |
+
+---
+
+## Docs
+
+- [Deploy Guide](docs/DEPLOY.md)
+- [Technical Design](docs/project-design.md)
+- [Telegram Setup](docs/telegram-setup.md)
+
+---
+
+## License
+
+MIT
