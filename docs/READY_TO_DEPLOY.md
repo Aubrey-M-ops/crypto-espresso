@@ -48,7 +48,7 @@ openclaw config --show-path
 ```yaml
 cron:
   - schedule: "0 8 * * *"
-    task: "cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/main.py"
+    task: "cd /path/to/web3-news-push && python3 src/main.py"
     label: "web3-news-push"
     runtime: "subagent"
     agentId: "main"
@@ -58,7 +58,7 @@ cron:
 
 **或者复制整个配置**:
 ```bash
-cat /Users/limohan/code_projects/web3/web3-news-push/openclaw-cron.yaml
+cat openclaw-cron.yaml
 ```
 
 ### Step 3: 重启 OpenClaw
@@ -83,7 +83,7 @@ openclaw cron list
 
 ```bash
 # 直接运行（会发送到 Telegram）
-cd /Users/limohan/code_projects/web3/web3-news-push
+cd /path/to/web3-news-push
 python3 src/main.py --max-articles 5
 
 # 或 dry-run（不发送）
@@ -170,7 +170,7 @@ RSS_FEEDS = {
 需要:
 1. Telegram API 凭证（my.telegram.org）
 2. 首次登录认证
-3. 配置 Folder ID: `Z2Y4z_t47LlhZTdl`
+3. 配置 Folder ID（从你的 Telegram 文件夹分享链接获取）
 
 完成后，每天推送会包含：
 - RSS 新闻（当前已有）

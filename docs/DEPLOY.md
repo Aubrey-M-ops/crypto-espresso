@@ -19,7 +19,6 @@
 ### 1. 安装依赖
 
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push
 pip install -r requirements.txt
 ```
 
@@ -34,7 +33,7 @@ cp .env.example .env
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...        # Claude API Key
 TELEGRAM_BOT_TOKEN=...              # Telegram Bot Token
-TELEGRAM_CHANNEL_ID=@morningm_news  # 频道 ID 或 @username
+TELEGRAM_CHANNEL_ID=@your_channel   # 频道 ID 或 @username
 TELEGRAM_API_ID=...                 # Telegram App ID（来自 my.telegram.org，KOL 抓取用）
 TELEGRAM_API_HASH=...               # Telegram App Hash（KOL 抓取用）
 ```
@@ -89,7 +88,7 @@ tail -f logs/cron_$(date +%Y%m%d).log
 
 ### 确认消息已发出
 
-打开频道 https://t.me/morningm_news，检查是否有新消息。
+打开你的 Telegram 频道，检查是否有新消息。
 
 ### 检查去重数据库
 

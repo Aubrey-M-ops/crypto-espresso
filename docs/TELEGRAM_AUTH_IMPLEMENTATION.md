@@ -164,8 +164,6 @@ asyncio.run(send_to_channel())
 
 ### 安装依赖
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push
-source venv/bin/activate
 pip install telethon python-dotenv
 ```
 

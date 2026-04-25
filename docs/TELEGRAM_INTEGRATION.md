@@ -152,7 +152,7 @@ python3 src/main.py
 
 ### Test Telegram filter:
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push
+cd /path/to/web3-news-push
 python3 src/telegram_filter.py
 ```
 

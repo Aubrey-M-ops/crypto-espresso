@@ -1,25 +1,25 @@
 # ✅ 部署成功！
 
 ## 部署时间
-**2026-04-13 22:30** (America/Toronto)
+**2026-04-13 22:30**
 
 ---
 
 ## 📋 部署信息
 
 ### Cron Job 详情
-- **Job ID**: `0880562a-8950-4458-8e9f-edcbadab186c`
+- **Job ID**: `<your-job-id>`
 - **Job Name**: `web3-news-push`
 - **Schedule**: `0 8 * * *` (每天早上 8:00)
-- **Timezone**: `America/Toronto`
+- **Timezone**: `Your/Timezone`
 - **Next Run**: 明早 8:00 (约 10 小时后)
 - **Status**: ✅ Idle (等待执行)
 - **Target**: Isolated session
-- **Delivery**: Telegram → `7967372524`
+- **Delivery**: Telegram → `<your-telegram-id>`
 
 ### 执行命令
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/main.py
+cd /path/to/web3-news-push && python3 src/main.py
 ```
 
 ---
@@ -69,27 +69,27 @@ openclaw cron list
 
 ### 查看执行历史
 ```bash
-openclaw cron runs --id 0880562a-8950-4458-8e9f-edcbadab186c
+openclaw cron runs --id <your-job-id>
 ```
 
 ### 手动触发测试
 ```bash
-openclaw cron run 0880562a-8950-4458-8e9f-edcbadab186c
+openclaw cron run <your-job-id>
 ```
 
 ### 禁用 job
 ```bash
-openclaw cron disable 0880562a-8950-4458-8e9f-edcbadab186c
+openclaw cron disable <your-job-id>
 ```
 
 ### 启用 job
 ```bash
-openclaw cron enable 0880562a-8950-4458-8e9f-edcbadab186c
+openclaw cron enable <your-job-id>
 ```
 
 ### 删除 job
 ```bash
-openclaw cron delete 0880562a-8950-4458-8e9f-edcbadab186c
+openclaw cron delete <your-job-id>
 ```
 
 ---
@@ -100,10 +100,10 @@ openclaw cron delete 0880562a-8950-4458-8e9f-edcbadab186c
 `~/.openclaw/cron/jobs.json`
 
 ### 去重数据库
-`/Users/limohan/code_projects/web3/web3-news-push/db/articles.db`
+`/path/to/web3-news-push/db/articles.db`
 
 ### 环境变量
-`/Users/limohan/code_projects/web3/web3-news-push/.env`
+`/path/to/web3-news-push/.env`
 
 ### 日志
 OpenClaw gateway 日志中会包含 cron 执行记录
@@ -117,18 +117,18 @@ OpenClaw gateway 日志中会包含 cron 执行记录
 删除旧 job 并重新添加：
 ```bash
 # 删除当前 job
-openclaw cron delete 0880562a-8950-4458-8e9f-edcbadab186c
+openclaw cron delete <your-job-id>
 
 # 添加新时间（例如改为每天 7:00 和 19:00）
 openclaw cron add \
   --name "web3-news-push" \
   --cron "0 7,19 * * *" \
-  --tz "America/Toronto" \
+  --tz "Your/Timezone" \
   --session isolated \
-  --message "cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/main.py" \
+  --message "cd /path/to/web3-news-push && python3 src/main.py" \
   --announce \
   --channel telegram \
-  --to "7967372524"
+  --to "<your-telegram-id>"
 ```
 
 ### 更改文章数量
@@ -172,12 +172,12 @@ MUST_READ_COUNT=3      # 必读部分 3 篇
 
 2. **查看执行日志**
    ```bash
-   openclaw cron runs --id 0880562a-8950-4458-8e9f-edcbadab186c
+   openclaw cron runs --id <your-job-id>
    ```
 
 3. **手动测试**
    ```bash
-   cd /Users/limohan/code_projects/web3/web3-news-push
+   cd /path/to/web3-news-push
    python3 src/main.py --dry-run --max-articles 3
    ```
 
@@ -189,10 +189,10 @@ MUST_READ_COUNT=3      # 必读部分 3 篇
 ### 常见问题
 
 **Q: 没收到消息，但 cron 显示运行成功**  
-A: 检查 Telegram Channel ID 是否正确，确认是 `7967372524`
+A: 检查 Telegram Channel ID 是否正确
 
 **Q: 消息发送失败**  
-A: 运行 `openclaw message send --channel telegram --target 7967372524 --message "测试"` 验证 Telegram 连接
+A: 运行 `openclaw message send --channel telegram --target <your-telegram-id> --message "测试"` 验证 Telegram 连接
 
 **Q: AI 摘要生成失败**  
 A: 检查 `.env` 中的 `ANTHROPIC_API_KEY` 是否有效

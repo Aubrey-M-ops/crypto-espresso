@@ -67,7 +67,7 @@
 
 ### AgentSkill (100% 完成)
 
-- ✅ `/Users/limohan/.claude/skills/openclaw-telebot/SKILL.md`
+- ✅ OpenClaw skill 文件
   - 部署和管理指南
   - 给 OpenClaw agent 用的参考文档
 
@@ -78,7 +78,7 @@
 ### 1. 环境配置
 
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push
+cd /path/to/web3-news-push
 cp .env.example .env
 # 编辑 .env 填入:
 # - TELEGRAM_CHANNEL_ID (从 @userinfobot 获取)
@@ -105,7 +105,7 @@ python3 src/main.py --dry-run --max-articles 3 --verbose
 ```yaml
 cron:
   - schedule: "0 8 * * *"  # 每天早上 8:00
-    task: "cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/main.py"
+    task: "cd /path/to/web3-news-push && python3 src/main.py"
     runtime: "subagent"
     agentId: "main"
     timeoutSeconds: 600
@@ -166,7 +166,7 @@ openclaw gateway restart
 
 ## 🔍 项目位置
 
-**主目录**: `/Users/limohan/code_projects/web3/web3-news-push`
+**主目录**: `/path/to/web3-news-push`
 
 **目录结构**:
 ```
@@ -199,7 +199,7 @@ web3-news-push/
 
 1. **配置 .env**
    ```bash
-   cd /Users/limohan/code_projects/web3/web3-news-push
+   cd /path/to/web3-news-push
    nano .env  # 填入 API keys
    ```
 

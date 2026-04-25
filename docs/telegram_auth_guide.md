@@ -160,8 +160,6 @@ asyncio.run(logout())
 The module includes a built-in test:
 
 ```bash
-cd /Users/limohan/code_projects/web3/web3-news-push
-source venv/bin/activate
 python src/telegram_auth.py
 ```
 
@@ -293,10 +291,7 @@ python src/telegram_auth.py
 
 ### "Cannot find .env file"
 
-Ensure `.env` is in the project root:
-```bash
-/Users/limohan/code_projects/web3/web3-news-push/.env
-```
+Ensure `.env` is in the project root directory.
 
 ### "Module not found: telethon"
 
