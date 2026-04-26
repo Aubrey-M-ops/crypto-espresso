@@ -9,6 +9,7 @@ import argparse
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -21,7 +22,7 @@ from dedup import ArticleDeduplicator
 from summarizer import SummarizerClient
 from classifier import classify_articles
 from digest import build_digest, build_kol_digest, format_empty_digest
-from monitor import send_alert, step_timer
+from monitor import send_alert, send_report, step_timer
 from supabase_client import save_terms
 
 # Load environment variables
@@ -190,6 +191,14 @@ def main():
     logger.info(f"🔄 No dedup: {args.no_dedup}")
 
     try:
+        pipeline_start = time.monotonic()
+        stats = {
+            "scraped_news": 0, "scraped_kol": 0,
+            "deduped_news": 0, "deduped_kol": 0,
+            "pushed_news": 0, "pushed_kol": 0,
+            "elapsed_sec": 0,
+        }
+
         # Step 1: Scrape articles
         logger.info("📰 Step 1/6: Scraping news sources...")
         with step_timer("Step 1/6: 新闻抓取", threshold_sec=60):
@@ -207,6 +216,7 @@ def main():
                 with step_timer("Step 1b/6: KOL 频道抓取", threshold_sec=60):
                     telegram_msgs = asyncio.run(scrape_telegram_sources())
                 kol_messages = filter_crypto_messages(telegram_msgs)
+                stats["scraped_kol"] = len(kol_messages)
                 logger.info(f"   ✅ Got {len(kol_messages)} KOL messages after filtering")
             except Exception as e:
                 logger.warning(f"   ⚠️ Telegram KOL scraping failed: {e}")
@@ -225,6 +235,7 @@ def main():
                 )
             return 0
         
+        stats["scraped_news"] = len(all_articles)
         logger.info(f"✅ Scraped {len(all_articles)} articles")
         
         # Step 2: Deduplicate
@@ -244,6 +255,9 @@ def main():
 
         if unique_kol:
             logger.info(f"   ✅ {len(unique_kol)} KOL message(s) to include")
+
+        stats["deduped_news"] = len(unique_articles)
+        stats["deduped_kol"] = len(unique_kol)
 
         if not args.kol_only:
             if not unique_articles:
@@ -333,6 +347,7 @@ def main():
             send_alert("Step 3/6: AI 摘要", "所有文章摘要均失败，未发送 digest")
             return 1
 
+        stats["pushed_news"] = len(summarized_articles)
         logger.info(f"✅ Summarized {len(summarized_articles)} articles")
         
         # Step 4: Classify
@@ -345,6 +360,7 @@ def main():
         today = datetime.now().strftime("%Y-%m-%d")
         messages = build_digest(classified, date=today) if not args.kol_only else []
         kol_messages_out = build_kol_digest(unique_kol, date=today) if unique_kol else []
+        stats["pushed_kol"] = len(unique_kol) if kol_messages_out else 0
         logger.info(f"✅ News: {len(messages)} message(s), KOL: {len(kol_messages_out)} message(s)")
 
         # Step 6: Send to Telegram
@@ -378,6 +394,8 @@ def main():
                         )
                         return 1
         
+        stats["elapsed_sec"] = int(time.monotonic() - pipeline_start)
+        send_report(stats)
         logger.info("🎉 Web3 News Push completed successfully!")
         return 0
         

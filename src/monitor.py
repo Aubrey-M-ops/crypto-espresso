@@ -83,6 +83,65 @@ def step_timer(step: str, threshold_sec: int = _DEFAULT_TIMEOUT) -> Generator[No
             send_timeout_warning(step, elapsed, threshold_sec)
 
 
+def send_report(stats: dict) -> None:
+    """
+    Send a push-run summary report to the admin Telegram chat.
+
+    Expected keys in stats:
+        scraped_news, scraped_kol, deduped_news, deduped_kol,
+        pushed_news, pushed_kol, elapsed_sec
+    Never raises.
+    """
+    admin_chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "")
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    elapsed = stats.get("elapsed_sec", 0)
+    mins, secs = divmod(int(elapsed), 60)
+    elapsed_str = f"{mins}m {secs}s" if mins else f"{secs}s"
+
+    lines = [
+        f"📊 *Web3 News Push 推送报告*",
+        f"🕐 {now}",
+        f"",
+        f"📰 新闻爬取：{stats.get('scraped_news', 0)} 条",
+        f"✂️ 去重后：{stats.get('deduped_news', 0)} 条",
+        f"📤 实际推送：{stats.get('pushed_news', 0)} 条",
+    ]
+    if stats.get("scraped_kol", 0) or stats.get("pushed_kol", 0):
+        lines += [
+            f"",
+            f"📱 KOL 爬取：{stats.get('scraped_kol', 0)} 条",
+            f"✂️ 去重后：{stats.get('deduped_kol', 0)} 条",
+            f"📤 实际推送：{stats.get('pushed_kol', 0)} 条",
+        ]
+    lines += [f"", f"⏱ 总用时：{elapsed_str}"]
+
+    text = "\n".join(lines)
+    logger.info(f"[REPORT] {text.replace('*', '')}")
+
+    if not admin_chat_id or not bot_token:
+        return
+
+    try:
+        import httpx
+
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        payload = {
+            "chat_id": admin_chat_id,
+            "text": text,
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": True,
+        }
+        resp = httpx.post(url, json=payload, timeout=15)
+        if resp.status_code != 200 or not resp.json().get("ok"):
+            payload.pop("parse_mode")
+            payload["text"] = text.replace("*", "")
+            httpx.post(url, json=payload, timeout=15)
+    except Exception as report_err:
+        logger.error(f"Failed to deliver push report: {report_err}")
+
+
 def send_alert(step: str, error: str, exc: Exception | None = None) -> None:
     """
     Send a failure alert to the admin Telegram chat.
