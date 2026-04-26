@@ -34,6 +34,20 @@ def _get_client():
     return create_client(url, key)
 
 
+def _fetch_existing_keys(client, rows: list[dict]) -> set[tuple[str, str]]:
+    """Return (term_en, term_cn) pairs that already exist in the table (any date)."""
+    existing: set[tuple[str, str]] = set()
+    en_list = list({r["term_en"] for r in rows if r["term_en"]})
+    cn_list = list({r["term_cn"] for r in rows if r["term_cn"]})
+    if en_list:
+        res = client.table("crypto_terms").select("term_en,term_cn").in_("term_en", en_list).execute()
+        existing.update((r["term_en"], r["term_cn"]) for r in (res.data or []))
+    if cn_list:
+        res = client.table("crypto_terms").select("term_en,term_cn").in_("term_cn", cn_list).execute()
+        existing.update((r["term_en"], r["term_cn"]) for r in (res.data or []))
+    return existing
+
+
 def save_terms(
     terms: list[tuple[str, str, str]],
     article_url: str,
@@ -42,10 +56,10 @@ def save_terms(
     pub_date: Optional[str] = None,
 ) -> int:
     """
-    Upsert extracted terms into the crypto_terms table.
+    Insert new terms into the crypto_terms table, skipping any that already exist.
 
-    On conflict (same term_en + term_cn + date), the existing row is updated
-    so the freshest source wins.
+    Deduplication is global (any date): if (term_en, term_cn) already exists in
+    the table, that term is skipped regardless of when it was first saved.
 
     Args:
         terms: List of (term_en, term_cn, explanation) tuples from SummaryResult.terms
@@ -55,7 +69,7 @@ def save_terms(
         pub_date: ISO date string YYYY-MM-DD; defaults to today
 
     Returns:
-        Number of rows upserted (0 on error)
+        Number of rows inserted (0 on error or all duplicates)
     """
     if not terms:
         return 0
@@ -76,13 +90,23 @@ def save_terms(
 
     try:
         client = _get_client()
+        existing_keys = _fetch_existing_keys(client, rows)
+        new_rows = [r for r in rows if (r["term_en"], r["term_cn"]) not in existing_keys]
+        skipped = len(rows) - len(new_rows)
+        if not new_rows:
+            logger.info(f"⏭️ All {skipped} term(s) already in DB, skipping: {article_title[:50]}")
+            return 0
         result = (
             client.table("crypto_terms")
-            .upsert(rows, on_conflict="term_en,term_cn,date")
+            .upsert(new_rows, on_conflict="term_en,term_cn,date")
             .execute()
         )
         count = len(result.data) if result.data else 0
-        logger.info(f"✅ Saved {count} term(s) to Supabase for: {article_title[:50]}")
+        logger.info(
+            f"✅ Saved {count} new term(s)"
+            + (f", skipped {skipped} existing" if skipped else "")
+            + f" for: {article_title[:50]}"
+        )
         return count
     except Exception as e:
         logger.warning(f"⚠️ Failed to save terms to Supabase: {e}")

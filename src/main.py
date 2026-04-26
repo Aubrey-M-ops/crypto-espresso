@@ -282,6 +282,15 @@ def main():
                         kol_result = summarizer.summarize_kol(channel=channel, content=content)
                         kol_msg = dict(kol_msg)
                         kol_msg["kol_summary"] = summarizer.format_kol_summary(kol_result)
+                        if kol_result.terms and os.getenv('SUPABASE_URL'):
+                            kol_terms_3 = [(term, "", explanation) for term, explanation in kol_result.terms]
+                            save_terms(
+                                terms=kol_terms_3,
+                                article_url=kol_msg.get("source", ""),
+                                article_title=f"KOL @{channel}",
+                                category="#KOL",
+                                pub_date=datetime.now().strftime("%Y-%m-%d"),
+                            )
                     except Exception as e:
                         logger.warning(f"   ⚠️ Failed to interpret KOL @{channel}: {e}")
                     interpreted_kol.append(kol_msg)
