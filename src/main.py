@@ -24,6 +24,7 @@ from classifier import classify_articles
 from digest import build_digest, build_kol_digest, format_empty_digest
 from monitor import send_alert, send_report, step_timer
 from supabase_client import save_terms
+from kol_tracker import save_project_mentions
 
 # Load environment variables
 try:
@@ -304,6 +305,12 @@ def main():
                                 article_title=f"KOL @{channel}",
                                 category="#KOL",
                                 pub_date=datetime.now().strftime("%Y-%m-%d"),
+                            )
+                        if kol_result.projects:
+                            save_project_mentions(
+                                kol_name=channel,
+                                mention_date=datetime.now().strftime("%Y-%m-%d"),
+                                projects=kol_result.projects,
                             )
                     except Exception as e:
                         logger.warning(f"   ⚠️ Failed to interpret KOL @{channel}: {e}")
