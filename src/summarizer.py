@@ -322,7 +322,7 @@ class SummarizerClient:
 
                 response = self.client.messages.create(
                     model=self.model,
-                    max_tokens=512,
+                    max_tokens=1024,
                     temperature=0.5,
                     messages=[{"role": "user", "content": prompt}]
                 )
