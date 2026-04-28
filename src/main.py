@@ -307,6 +307,7 @@ def main():
                                 pub_date=datetime.now().strftime("%Y-%m-%d"),
                             )
                         if kol_result.projects:
+                            # wiki files are always written; Supabase is optional (guarded inside save_project_mentions)
                             save_project_mentions(
                                 kol_name=channel,
                                 mention_date=datetime.now().strftime("%Y-%m-%d"),

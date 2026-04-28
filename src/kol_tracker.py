@@ -159,12 +159,12 @@ def save_project_mentions(
         wiki_dir: Override default wiki dir (used in tests)
 
     Returns:
-        Number of rows inserted to Supabase (0 if Supabase not configured or error)
+        Number of rows upserted to Supabase (0 if Supabase not configured or error)
     """
     if not projects:
         return 0
 
-    inserted = 0
+    upserted = 0
 
     supabase_url = os.getenv("SUPABASE_URL")
     if supabase_url:
@@ -192,8 +192,8 @@ def save_project_mentions(
                     .upsert(rows, on_conflict="project_name,kol_name,mention_date")
                     .execute()
                 )
-                inserted = len(result.data) if result.data else 0
-                logger.info(f"✅ Saved {inserted} project mention(s) to Supabase for KOL @{kol_name}")
+                upserted = len(result.data) if result.data else 0
+                logger.info(f"✅ Upserted {upserted} project mention(s) to Supabase for KOL @{kol_name}")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to save project mentions to Supabase: {e}")
     else:
@@ -212,4 +212,4 @@ def save_project_mentions(
         except Exception as e:
             logger.warning(f"⚠️ Failed to generate wiki for {p.project_name}: {e}")
 
-    return inserted
+    return upserted
