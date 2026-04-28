@@ -18,7 +18,7 @@ JSON schema:
   "projects": [
     {{
       "name": "项目名或币种名（如 FET、ARB、BTC，使用原文大写缩写，如无缩写则用原名）",
-      "sentiment": "看多 或 看空 或 中性",
+      "sentiment": "看多",
       "context": "KOL关于这个项目说了什么，一句话概括，引号内为原文观点"
     }}
   ]
