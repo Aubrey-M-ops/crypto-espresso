@@ -39,11 +39,20 @@ class SummaryResult:
 
 
 @dataclass
+class KolProjectMention:
+    """A single project mention extracted from a KOL post."""
+    project_name: str
+    sentiment: str   # 看多 / 看空 / 中性
+    context: str
+
+
+@dataclass
 class KolSummaryResult:
     """Structured KOL message interpretation output from Claude API."""
     plain_summary: str              # 💬 KOL在说什么
     terms: list[tuple[str, str]]    # 📖 术语拆解
     beginner_perspective: str       # 🧠 小白视角
+    projects: list[KolProjectMention]   # 🔍 提及项目
     raw_response: str
 
 
@@ -391,11 +400,33 @@ class SummarizerClient:
 
         beginner_perspective = str(payload.get("beginner_perspective") or "").strip()
 
+        raw_projects = payload.get("projects", [])
+        if not isinstance(raw_projects, list):
+            raw_projects = []
+        valid_sentiments = {"看多", "看空", "中性"}
+        projects = []
+        for entry in raw_projects[:5]:
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("name", "")).strip()
+            sentiment = str(entry.get("sentiment", "中性")).strip()
+            context = str(entry.get("context", "")).strip()
+            if not name:
+                continue
+            if sentiment not in valid_sentiments:
+                sentiment = "中性"
+            projects.append(KolProjectMention(
+                project_name=name,
+                sentiment=sentiment,
+                context=context,
+            ))
+
         return KolSummaryResult(
             plain_summary=plain_summary,
             terms=terms,
             beginner_perspective=beginner_perspective,
-            raw_response=raw_text
+            projects=projects,
+            raw_response=raw_text,
         )
 
     def _escape_inner_quotes(self, json_str: str) -> str:
