@@ -1,7 +1,10 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+import tempfile, pathlib
+
 from summarizer import SummarizerClient
+from kol_tracker import generate_project_wiki, _wiki_path
 
 RAW_WITH_PROJECTS = '{"summary": "某KOL看好FET和ARB两个项目。","terms": [],"beginner_perspective": "了解KOL如何筛选项目。","projects": [{"name": "FET","sentiment": "看多","context": "FET是AI赛道最纯正的标的"},{"name": "ARB","sentiment": "中性","context": "ARB短期有压力但长期看好"}]}'
 
@@ -39,11 +42,6 @@ def test_parse_kol_projects_null_becomes_empty():
     raw = '{"summary": "Test.", "terms": [], "beginner_perspective": "Test.", "projects": null}'
     result = client._parse_kol_response(raw)
     assert result.projects == []
-
-
-import tempfile, pathlib
-
-from kol_tracker import generate_project_wiki, _wiki_path
 
 
 def test_wiki_created_for_new_project():

@@ -44,7 +44,7 @@ WIKI_TEMPLATE = """\
 
 
 def _wiki_path(wiki_dir: Path, project_name: str) -> Path:
-    safe_name = re.sub(r'[\\/]', '_', project_name).replace(' ', '_')
+    safe_name = re.sub(r'[\\/:*?"<>|]', '_', project_name).replace(' ', '_')
     return wiki_dir / f"{safe_name}.md"
 
 
@@ -101,10 +101,11 @@ def generate_project_wiki(
                 first_seen = min(dates + [mention_date])
 
     sentiment_label = SENTIMENT_EMOJI.get(sentiment, sentiment)
+    safe_context = context.replace("|", "｜") if context else ""
     new_row = {
         "date": mention_date,
         "kol": f"@{kol_name}",
-        "context": f'"{context}"' if context else "-",
+        "context": f'"{safe_context}"' if safe_context else "-",
         "sentiment": sentiment_label,
     }
 
@@ -114,6 +115,8 @@ def generate_project_wiki(
     )
     if not already_recorded:
         existing_rows.append(new_row)
+    else:
+        logger.debug(f"Skipping duplicate wiki entry: {project_name} {mention_date} @{kol_name}")
 
     existing_rows.sort(key=lambda r: r.get("date", ""))
 
@@ -165,31 +168,34 @@ def save_project_mentions(
 
     supabase_url = os.getenv("SUPABASE_URL")
     if supabase_url:
-        try:
-            from supabase import create_client
-            key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-            client = create_client(supabase_url, key)
+        key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not key:
+            logger.warning("SUPABASE_SERVICE_ROLE_KEY not set — skipping Supabase persistence")
+        else:
+            try:
+                from supabase import create_client
+                client = create_client(supabase_url, key)
 
-            rows = [
-                {
-                    "project_name": p.project_name,
-                    "kol_name": kol_name,
-                    "mention_date": mention_date,
-                    "context": p.context,
-                    "sentiment": p.sentiment,
-                    "research_status": "待研究",
-                }
-                for p in projects
-            ]
-            result = (
-                client.table("kol_project_tracking")
-                .upsert(rows, on_conflict="project_name,kol_name,mention_date")
-                .execute()
-            )
-            inserted = len(result.data) if result.data else 0
-            logger.info(f"✅ Saved {inserted} project mention(s) to Supabase for KOL @{kol_name}")
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to save project mentions to Supabase: {e}")
+                rows = [
+                    {
+                        "project_name": p.project_name,
+                        "kol_name": kol_name,
+                        "mention_date": mention_date,
+                        "context": p.context,
+                        "sentiment": p.sentiment,
+                        "research_status": "待研究",
+                    }
+                    for p in projects
+                ]
+                result = (
+                    client.table("kol_project_tracking")
+                    .upsert(rows, on_conflict="project_name,kol_name,mention_date")
+                    .execute()
+                )
+                inserted = len(result.data) if result.data else 0
+                logger.info(f"✅ Saved {inserted} project mention(s) to Supabase for KOL @{kol_name}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to save project mentions to Supabase: {e}")
     else:
         logger.debug("SUPABASE_URL not set — skipping Supabase persistence")
 
