@@ -14,3 +14,28 @@ def test_parse_kol_projects():
     assert "AI赛道" in result.projects[0].context
     assert result.projects[1].project_name == "ARB"
     assert result.projects[1].sentiment == "中性"
+
+
+def test_parse_kol_projects_missing_key():
+    """Response without 'projects' key should produce empty list."""
+    client = SummarizerClient.__new__(SummarizerClient)
+    raw = '{"summary": "No projects mentioned.", "terms": [], "beginner_perspective": "学习。"}'
+    result = client._parse_kol_response(raw)
+    assert result.projects == []
+
+
+def test_parse_kol_projects_invalid_sentiment_normalized():
+    """Invalid sentiment should be normalized to 中性."""
+    client = SummarizerClient.__new__(SummarizerClient)
+    raw = '{"summary": "Test.", "terms": [], "beginner_perspective": "Test.", "projects": [{"name": "BTC", "sentiment": "bullish", "context": "looking good"}]}'
+    result = client._parse_kol_response(raw)
+    assert len(result.projects) == 1
+    assert result.projects[0].sentiment == "中性"
+
+
+def test_parse_kol_projects_null_becomes_empty():
+    """projects: null should produce empty list without raising."""
+    client = SummarizerClient.__new__(SummarizerClient)
+    raw = '{"summary": "Test.", "terms": [], "beginner_perspective": "Test.", "projects": null}'
+    result = client._parse_kol_response(raw)
+    assert result.projects == []

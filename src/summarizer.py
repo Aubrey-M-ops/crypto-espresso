@@ -52,7 +52,7 @@ class KolSummaryResult:
     plain_summary: str              # 💬 KOL在说什么
     terms: list[tuple[str, str]]    # 📖 术语拆解
     beginner_perspective: str       # 🧠 小白视角
-    projects: list[KolProjectMention]   # 🔍 提及项目
+    projects: list[KolProjectMention]   # consumed by kol_tracker.py (DB + wiki), not rendered to Telegram
     raw_response: str
 
 
