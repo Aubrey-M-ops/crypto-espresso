@@ -39,3 +39,51 @@ def test_parse_kol_projects_null_becomes_empty():
     raw = '{"summary": "Test.", "terms": [], "beginner_perspective": "Test.", "projects": null}'
     result = client._parse_kol_response(raw)
     assert result.projects == []
+
+
+import tempfile, pathlib
+
+from kol_tracker import generate_project_wiki, _wiki_path
+
+
+def test_wiki_created_for_new_project():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        wiki_dir = pathlib.Path(tmpdir)
+        generate_project_wiki(
+            project_name="FET",
+            kol_name="WuBlockchain",
+            mention_date="2026-04-27",
+            sentiment="看多",
+            context="FET 是 AI 赛道最纯正的标的",
+            wiki_dir=wiki_dir,
+        )
+        wiki_file = wiki_dir / "FET.md"
+        assert wiki_file.exists()
+        content = wiki_file.read_text(encoding="utf-8")
+        assert "# FET" in content
+        assert "WuBlockchain" in content
+        assert "2026-04-27" in content
+        assert "🟢 看多" in content
+        assert "FET 是 AI 赛道最纯正的标的" in content
+        assert "累计提及次数：1" in content
+        assert "首次发现：2026-04-27" in content
+
+
+def test_wiki_updated_on_second_mention():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        wiki_dir = pathlib.Path(tmpdir)
+        generate_project_wiki("FET", "WuBlockchain", "2026-04-27", "看多",
+                              "FET 是 AI 赛道最纯正的标的", wiki_dir)
+        generate_project_wiki("FET", "AltcoinGordon", "2026-05-01", "中性",
+                              "短期回调但长期看好", wiki_dir)
+        content = (wiki_dir / "FET.md").read_text(encoding="utf-8")
+        assert "WuBlockchain" in content
+        assert "AltcoinGordon" in content
+        assert "累计提及次数：2" in content
+        assert "提及 KOL 数：2" in content
+        assert "首次发现：2026-04-27" in content
+
+
+def test_wiki_path_normalizes_name():
+    assert _wiki_path(pathlib.Path("/tmp"), "ARB") == pathlib.Path("/tmp/ARB.md")
+    assert _wiki_path(pathlib.Path("/tmp"), "Fetch AI") == pathlib.Path("/tmp/Fetch_AI.md")
