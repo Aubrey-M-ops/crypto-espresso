@@ -5,9 +5,9 @@ create table if not exists kol_project_tracking (
     kol_name text not null,
     mention_date date not null,
     context text not null default '',
-    sentiment text not null default '中性',
-    research_status text not null default '待研究',
-    created_at timestamptz default now(),
+    sentiment text not null default '中性' constraint chk_sentiment check (sentiment in ('看多', '看空', '中性')),
+    research_status text not null default '待研究' constraint chk_research_status check (research_status in ('待研究', '研究中', '已完成', '不感兴趣')),
+    created_at timestamptz not null default now(),
     unique (project_name, kol_name, mention_date)
 );
 
