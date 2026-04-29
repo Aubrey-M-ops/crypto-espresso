@@ -493,23 +493,28 @@ class SummarizerClient:
             except json.JSONDecodeError:
                 pass
 
-        # 2. Standard scan
+        # 2. Try the outermost object first (direct, then with escaped inner quotes)
+        first_brace = text.find('{')
+        if first_brace >= 0:
+            try:
+                payload, _ = decoder.raw_decode(text[first_brace:])
+                if isinstance(payload, dict):
+                    return payload
+            except json.JSONDecodeError:
+                pass
+            try:
+                payload, _ = decoder.raw_decode(self._escape_inner_quotes(text[first_brace:]))
+                if isinstance(payload, dict):
+                    return payload
+            except json.JSONDecodeError:
+                pass
+
+        # 3. Last resort: scan sub-objects
         for index, char in enumerate(text):
             if char != '{':
                 continue
             try:
                 payload, _ = decoder.raw_decode(text[index:])
-            except json.JSONDecodeError:
-                continue
-            if isinstance(payload, dict):
-                return payload
-
-        # 3. Sanitized scan: escape inner quotes then try raw_decode
-        for index, char in enumerate(text):
-            if char != '{':
-                continue
-            try:
-                payload, _ = decoder.raw_decode(self._escape_inner_quotes(text[index:]))
             except json.JSONDecodeError:
                 continue
             if isinstance(payload, dict):

@@ -60,3 +60,9 @@ htmlcov/
 
 # Local notes
 TODO.md
+
+# Generated wiki files
+wiki/
+
+# Superpowers plans/docs
+docs/superpowers/

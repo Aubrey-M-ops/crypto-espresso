@@ -6,7 +6,7 @@ PYTHON      := venv/bin/python
 PIP         := venv/bin/pip
 
 .PHONY: help \
-        install test test-monitor \
+        install test test-monitor test-wiki \
         dry-run dry-run-kol dry-run-news \
         test-send test-send-news test-send-kol \
         deploy setup auth \
@@ -26,6 +26,7 @@ help:
 	@echo "  install          安装 Python 依赖（venv）"
 	@echo "  test             运行单元测试"
 	@echo "  test-monitor     测试告警模块 → 实际发送到 Telegram"
+	@echo "  test-wiki        测试 Wiki 生成器 → 用样本消息跑完整链路（需要 ANTHROPIC_API_KEY）"
 	@echo ""
 	@echo "  ── 本地预览（不发送）──────────────────────────────────────"
 	@echo "  dry-run          跑完整 pipeline，打印 digest，不推送"
@@ -69,6 +70,10 @@ test-monitor:
 	@echo ">>> 测试告警模块（将发送真实 Telegram 消息）..."
 	$(PYTHON) test/test_monitor.py
 	@echo "✅ 告警测试完成"
+
+test-wiki:
+	@echo ">>> 测试 Wiki 生成器（Claude AI + 本地 wiki 文件，不推送 Telegram）..."
+	$(PYTHON) test/test_wiki_generator.py
 
 # ─────────────────────────────────────────────
 # 本地预览（不发送）
