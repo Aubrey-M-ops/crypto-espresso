@@ -5,6 +5,11 @@ import tempfile, pathlib, shutil
 from unittest.mock import patch, MagicMock
 
 from wiki_sync import sync_files
+from wiki_sync import ensure_clone
+from wiki_sync import commit_and_push
+from wiki_sync import send_notification
+import wiki_sync
+from wiki_sync import main
 
 
 def test_sync_files_copies_new_file():
@@ -57,9 +62,6 @@ def test_sync_files_returns_empty_when_no_wiki_files():
         assert changed == []
 
 
-from wiki_sync import ensure_clone
-
-
 def test_ensure_clone_skips_if_already_cloned():
     with tempfile.TemporaryDirectory() as tmpdir:
         working_dir = pathlib.Path(tmpdir)
@@ -80,9 +82,6 @@ def test_ensure_clone_runs_git_clone_if_missing():
             args = mock_run.call_args[0][0]
             assert args[0] == "git"
             assert "clone" in args
-
-
-from wiki_sync import commit_and_push
 
 
 def test_commit_and_push_returns_false_when_nothing_to_commit():
@@ -119,9 +118,6 @@ def test_commit_and_push_returns_true_when_changes_exist():
             assert result is True
 
 
-from wiki_sync import send_notification
-
-
 def test_send_notification_posts_to_telegram():
     with patch("httpx.post") as mock_post:
         mock_resp = MagicMock()
@@ -145,14 +141,27 @@ def test_send_notification_posts_to_telegram():
 
 def test_send_notification_skips_when_token_missing():
     with patch("httpx.post") as mock_post:
-        with patch.dict(os.environ, {}, clear=True):
-            os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "", "TELEGRAM_ADMIN_CHAT_ID": ""}):
             send_notification(["BTC"])
         mock_post.assert_not_called()
 
 
-import wiki_sync
-from wiki_sync import main
+def test_send_notification_truncates_names_beyond_five():
+    with patch("httpx.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"ok": True}
+        mock_post.return_value = mock_resp
+
+        with patch.dict(os.environ, {
+            "TELEGRAM_BOT_TOKEN": "test-token",
+            "TELEGRAM_ADMIN_CHAT_ID": "123456",
+        }):
+            send_notification(["BTC", "ETH", "SOL", "ARB", "FET", "DOGE", "ADA"])
+
+        body = mock_post.call_args[1]["json"]
+        assert "等7个" in body["text"]
+        assert "DOGE" not in body["text"]
 
 
 def test_main_skips_when_no_wiki_files(tmp_path):
