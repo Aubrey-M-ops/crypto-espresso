@@ -98,8 +98,8 @@ def main() -> None:
         return
 
     pushed = commit_and_push(WORKING_DIR)
+    send_notification(changed)
     if pushed:
-        send_notification(changed)
         logger.info(f"Wiki synced: {changed}")
     else:
         logger.info("Nothing committed after sync")
