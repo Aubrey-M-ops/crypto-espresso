@@ -44,6 +44,7 @@ def ensure_clone(bare_repo: str, working_dir: Path) -> None:
 def commit_and_push(working_dir: Path) -> bool:
     """Stage all, commit, push. Returns True if a commit was made."""
     cwd = str(working_dir)
+    subprocess.run(["git", "-C", cwd, "pull", "--rebase", "origin", "main"], check=True)
     subprocess.run(["git", "-C", cwd, "add", "."], check=True)
     result = subprocess.run(["git", "-C", cwd, "diff", "--cached", "--quiet"])
     if result.returncode == 0:
