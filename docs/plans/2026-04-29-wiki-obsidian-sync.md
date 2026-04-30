@@ -16,6 +16,7 @@
 |---|---|---|
 | Create | `src/wiki_sync.py` | 核心同步逻辑：clone 检测、文件同步、git commit/push、Telegram 通知 |
 | Create | `test/test_wiki_sync.py` | 单元测试 |
+| Create | `scripts/setup-obsidian-sync.sh` | Mac 一次性安装脚本：clone bare repo 到 vault，可直接运行 |
 | Modify | `.env` | 追加 `WIKI_WORKING_DIR`、`WIKI_BARE_REPO` |
 | Modify | `openclaw-cron.yaml` | 追加每天 22:00 UTC 的 wiki_sync 调度 |
 
@@ -581,34 +582,102 @@ git commit -m "chore: schedule wiki_sync daily at 22:00 UTC"
 
 ---
 
-## Task 5：Mac 侧一次性配置（手动操作）
+## Task 5：创建 Mac 安装脚本并提交到项目
 
-**Files:** 无（Obsidian 插件配置）
+**Files:**
+- Create: `scripts/setup-obsidian-sync.sh`
 
-- [ ] **Step 1: 在 Obsidian 安装 Git 社区插件**
-
-Obsidian → Settings → Community plugins → Browse → 搜索 "Obsidian Git" → Install → Enable
-
-- [ ] **Step 2: 在 vault 内创建落点目录并 clone**
+- [ ] **Step 1: 创建 `scripts/` 目录和脚本文件**
 
 ```bash
-mkdir -p ~/path/to/vault/Web3/Project_Tracking
-cd ~/path/to/vault/Web3/Project_Tracking
-git clone user@vps-ip:/opt/crypto-wiki-private.git .
+mkdir -p scripts
+```
+
+新建 `scripts/setup-obsidian-sync.sh`：
+
+```bash
+#!/usr/bin/env bash
+# One-time setup: clone VPS wiki bare repo into Obsidian vault
+#
+# Usage:
+#   VPS_USER=ubuntu VPS_IP=1.2.3.4 VAULT_PATH=~/Documents/Obsidian/MyVault \
+#     bash scripts/setup-obsidian-sync.sh
+#
+# After running, configure Obsidian Git plugin:
+#   - Custom base path: Web3/Project_Tracking
+#   - Auto pull interval: 30 minutes
+#   - Pull on startup: enabled
+
+set -euo pipefail
+
+: "${VPS_USER:?Set VPS_USER (e.g. ubuntu)}"
+: "${VPS_IP:?Set VPS_IP (e.g. 1.2.3.4)}"
+: "${VAULT_PATH:?Set VAULT_PATH (e.g. ~/Documents/Obsidian/MyVault)}"
+
+VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
+TARGET_DIR="$VAULT_PATH/Web3/Project_Tracking"
+BARE_REPO="${VPS_USER}@${VPS_IP}:/opt/crypto-wiki-private.git"
+
+echo "→ Target: $TARGET_DIR"
+echo "→ Remote: $BARE_REPO"
+
+if [ -d "$TARGET_DIR/.git" ]; then
+  echo "Already cloned — running git pull instead"
+  git -C "$TARGET_DIR" pull origin main
+else
+  mkdir -p "$TARGET_DIR"
+  git clone "$BARE_REPO" "$TARGET_DIR"
+  echo "✅ Clone complete"
+fi
+
+echo ""
+echo "Next steps:"
+echo "  1. Install 'Obsidian Git' community plugin in Obsidian"
+echo "  2. Settings → Obsidian Git → Custom base path: Web3/Project_Tracking"
+echo "  3. Auto pull interval: 30 minutes | Pull on startup: enabled"
+echo "  4. Command Palette → 'Obsidian Git: Pull' to verify"
+```
+
+- [ ] **Step 2: 使脚本可执行**
+
+```bash
+chmod +x scripts/setup-obsidian-sync.sh
+```
+
+- [ ] **Step 3: 验证脚本语法无误（dry run，不实际连接 VPS）**
+
+```bash
+bash -n scripts/setup-obsidian-sync.sh && echo "Syntax OK"
+# 预期：Syntax OK
+```
+
+- [ ] **Step 4: 提交**
+
+```bash
+git add scripts/setup-obsidian-sync.sh
+git commit -m "feat: add Mac Obsidian sync setup script"
+```
+
+- [ ] **Step 5: 在 Mac 实际运行脚本（一次性操作）**
+
+```bash
+VPS_USER=your_user VPS_IP=your.vps.ip \
+  VAULT_PATH=~/path/to/vault \
+  bash scripts/setup-obsidian-sync.sh
 ```
 
 > 确保 Mac 的 SSH 公钥已加入 VPS `~/.ssh/authorized_keys`
 
-- [ ] **Step 3: 配置 Obsidian Git 插件**
+- [ ] **Step 6: 在 Obsidian 完成插件配置**
+
+Obsidian → Settings → Community plugins → Browse → 搜索 "Obsidian Git" → Install → Enable
 
 Settings → Obsidian Git：
-- **Vault root** 指向 `Web3/Project_Tracking/`（插件 Custom base path 设为此路径）
+- **Custom base path:** `Web3/Project_Tracking`
 - **Auto pull interval (minutes):** 30
 - **Pull on startup:** 开启
 
-- [ ] **Step 4: 手动触发一次 pull 验证**
-
-Obsidian Command Palette → `Obsidian Git: Pull` → 确认 `Web3/Project_Tracking/projects/` 下出现 `.md` 文件
+Command Palette → `Obsidian Git: Pull` → 确认 `Web3/Project_Tracking/projects/` 下出现 `.md` 文件
 
 ---
 
