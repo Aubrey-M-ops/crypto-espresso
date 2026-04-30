@@ -17,7 +17,15 @@ cron:
     agentId: "main"
     timeoutSeconds: 600
     cleanup: "keep"
-    
+
+  - schedule: "0 22 * * *"
+    task: "cd /Users/limohan/code_projects/web3/web3-news-push && /usr/bin/python3 src/wiki_sync.py"
+    label: "wiki-obsidian-sync"
+    runtime: "subagent"
+    agentId: "wiki-sync"
+    timeoutSeconds: 120
+    cleanup: "keep"
+
 # 说明:
 # - schedule: "0 8 * * *" = 每天早上 8:00 AM
 # - task: 执行主程序
