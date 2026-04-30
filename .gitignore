@@ -66,3 +66,6 @@ wiki/
 
 # Superpowers plans/docs
 docs/superpowers/
+
+# Git worktrees
+.worktrees/
